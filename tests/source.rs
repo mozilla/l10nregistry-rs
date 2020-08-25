@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use futures::future::join_all;
 use l10nregistry::source::FileSource;
 use unic_langid::LanguageIdentifier;
 
@@ -112,10 +113,35 @@ async fn test_fetch_has_value_async() {
 
     assert_eq!(fs1.has_file(&en_us, path), None);
     assert!(fs1.fetch_file(&en_us, path).await.is_some());
+    println!("Completed");
     assert_eq!(fs1.has_file(&en_us, path), Some(true));
 
     assert_eq!(fs1.has_file(&en_us, path_missing), None);
     assert!(fs1.fetch_file(&en_us, path_missing).await.is_none());
     assert_eq!(fs1.has_file(&en_us, path_missing), Some(false));
     assert!(fs1.fetch_file_sync(&en_us, path_missing).is_none());
+}
+
+#[tokio::test]
+async fn test_fetch_async_consequitive() {
+    let en_us: LanguageIdentifier = "en-US".parse().unwrap();
+
+    let fs1 = FileSource::new(
+        "toolkit".to_string(),
+        vec![en_us.clone()],
+        "./data/toolkit/{locale}/".into(),
+    );
+
+    let results = join_all(vec![
+        fs1.fetch_file(&en_us, Path::new("menu.ftl")),
+        fs1.fetch_file(&en_us, Path::new("menu.ftl")),
+    ])
+    .await;
+    assert!(results[0].is_some());
+    assert!(results[1].is_some());
+
+    assert!(fs1
+        .fetch_file(&en_us, Path::new("menu.ftl"))
+        .await
+        .is_some());
 }
