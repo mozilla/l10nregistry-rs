@@ -60,7 +60,7 @@ impl FileSource {
         let mut cache = self.cache.try_borrow_mut().unwrap();
         let res = cache.entry(full_path.clone()).or_insert_with(|| {
             ResourceStatus::Sync(
-                std::fs::read_to_string(&full_path)
+                gecko::fetch_sync(&full_path)
                     .ok()
                     .map(|source| Arc::new(FluentResource { source })),
             )
