@@ -22,6 +22,16 @@ pub enum ResourceStatus {
     None,
 }
 
+impl From<ResourceOption> for ResourceStatus {
+    fn from(input: ResourceOption) -> Self {
+        if let Some(res) = input {
+            Self::Value(res.clone())
+        } else {
+            Self::None
+        }
+    }
+}
+
 async fn read_resource<P: AsRef<Path>>(path: P) -> ResourceOption {
     gecko::fetch(path.as_ref())
         .await
@@ -32,15 +42,12 @@ async fn read_resource<P: AsRef<Path>>(path: P) -> ResourceOption {
 fn set_resolved(
     cache: Rc<RefCell<HashMap<PathBuf, ResourceStatus>>>,
     full_path: PathBuf,
-    value: &ResourceOption,
+    value: ResourceOption,
 ) {
-    println!("Set Resolved Called");
-    let mut cache = cache.try_borrow_mut().unwrap();
-    if let Some(res) = value {
-        cache.insert(full_path, ResourceStatus::Value(res.clone()));
-    } else {
-        cache.insert(full_path, ResourceStatus::None);
-    }
+    cache
+        .try_borrow_mut()
+        .unwrap()
+        .insert(full_path, value.into());
 }
 
 pub struct FileSource {
@@ -60,16 +67,19 @@ impl FileSource {
         }
     }
 
+    fn get_path(&self, langid: &LanguageIdentifier, path: &Path) -> PathBuf {
+        self.pre_path.resolve_path(langid).join(path)
+    }
+
     pub fn fetch_file_sync(&self, langid: &LanguageIdentifier, path: &Path) -> ResourceOption {
-        let full_path = self.pre_path.resolve_path(langid).join(path);
+        let full_path = self.get_path(langid, path);
 
         let mut cache = self.cache.try_borrow_mut().unwrap();
         let res = cache.entry(full_path.clone()).or_insert_with(|| {
-            if let Ok(source) = gecko::fetch_sync(&full_path) {
-                ResourceStatus::Value(Rc::new(FluentResource { source }))
-            } else {
-                ResourceStatus::None
-            }
+            gecko::fetch_sync(&full_path)
+                .ok()
+                .map(|source| Rc::new(FluentResource { source }))
+                .into()
         });
 
         match res {
@@ -85,7 +95,7 @@ impl FileSource {
     }
 
     pub async fn fetch_file(&self, langid: &LanguageIdentifier, path: &Path) -> ResourceOption {
-        let full_path = self.pre_path.resolve_path(langid).join(path);
+        let full_path = self.get_path(langid, path);
 
         let cache_cell = &self.cache;
         let mut cache = cache_cell.try_borrow_mut().unwrap();
@@ -107,7 +117,7 @@ impl FileSource {
                         // `ResourceStatus` and see if it has been resolved.
                         // My initial attempt to use it didn't work, but that may be just
                         // my lack of experience with the API.
-                        .inspect(|res| set_resolved(cache, cloned_full_path, res))
+                        .inspect(|res| set_resolved(cache, cloned_full_path, res.clone()))
                         .boxed_local()
                         .shared(),
                 )
@@ -126,16 +136,12 @@ impl FileSource {
         if !self.langids.contains(langid) {
             Some(false)
         } else {
-            let full_path = self.pre_path.resolve_path(langid).join(path);
+            let full_path = self.get_path(langid, path);
             let cache = self.cache.try_borrow().unwrap();
-            if let Some(res) = cache.get(&full_path) {
-                match res {
-                    ResourceStatus::Value(_) => Some(true),
-                    ResourceStatus::Async(_) => None,
-                    ResourceStatus::None => Some(false),
-                }
-            } else {
-                None
+            match cache.get(&full_path) {
+                Some(ResourceStatus::Value(_)) => Some(true),
+                Some(ResourceStatus::None) => Some(false),
+                Some(ResourceStatus::Async(_)) | None => None,
             }
         }
     }
