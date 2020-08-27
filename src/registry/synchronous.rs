@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::PathBuf;
 
 use super::L10nRegistry;
 use crate::fluent::FluentBundle;
@@ -9,7 +9,7 @@ impl L10nRegistry {
     pub fn generate_bundles_for_lang_sync<'l>(
         &'l self,
         langid: &'l LanguageIdentifier,
-        res_ids: &'l [&'l Path],
+        res_ids: &'l [PathBuf],
     ) -> impl Iterator<Item = FluentBundle> + 'l {
         self.generate_source_permutations(langid, res_ids)
             .map(move |sources| sources.into_iter().zip(res_ids))
@@ -28,8 +28,8 @@ impl L10nRegistry {
 
     pub fn generate_bundles_sync<'l>(
         &'l self,
-        lang_ids: &'l [&'l LanguageIdentifier],
-        res_ids: &'l [&'l Path],
+        lang_ids: &'l [LanguageIdentifier],
+        res_ids: &'l [PathBuf],
     ) -> impl Iterator<Item = FluentBundle> + 'l {
         lang_ids
             .iter()

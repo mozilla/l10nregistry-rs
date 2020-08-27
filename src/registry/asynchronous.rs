@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::PathBuf;
 
 use futures::stream::Stream;
 use futures::stream::{self, StreamExt};
@@ -11,7 +11,7 @@ impl L10nRegistry {
     pub fn generate_bundles_for_lang<'l>(
         &'l self,
         langid: &'l LanguageIdentifier,
-        res_ids: &'l [&'l Path],
+        res_ids: &'l [PathBuf],
     ) -> impl Stream<Item = FluentBundle> + 'l {
         let permutations = self
             .generate_source_permutations(langid, res_ids)
@@ -32,8 +32,8 @@ impl L10nRegistry {
 
     pub fn generate_bundles<'l>(
         &'l self,
-        lang_ids: &'l [&'l LanguageIdentifier],
-        res_ids: &'l [&'l Path],
+        lang_ids: &'l [LanguageIdentifier],
+        res_ids: &'l [PathBuf],
     ) -> impl Stream<Item = FluentBundle> + 'l {
         stream::iter(lang_ids)
             .map(move |langid| self.generate_bundles_for_lang(langid, res_ids))

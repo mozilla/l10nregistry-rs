@@ -6,6 +6,7 @@ use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::rc::Rc;
+use std::borrow::Borrow;
 
 use futures::future::{FutureExt, Shared};
 use unic_langid::LanguageIdentifier;
@@ -155,7 +156,8 @@ impl FileSource {
         }
     }
 
-    pub fn has_file(&self, langid: &LanguageIdentifier, path: &Path) -> Option<bool> {
+    pub fn has_file<L: Borrow<LanguageIdentifier>>(&self, langid: L, path: &Path) -> Option<bool> {
+        let langid = langid.borrow();
         if !self.langids.contains(langid) {
             Some(false)
         } else {

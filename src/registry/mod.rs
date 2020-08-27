@@ -1,7 +1,7 @@
 mod asynchronous;
 mod synchronous;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use itertools::Itertools;
 use unic_langid::LanguageIdentifier;
@@ -47,7 +47,7 @@ impl L10nRegistry {
     pub fn generate_source_permutations<'l>(
         &'l self,
         langid: &'l LanguageIdentifier,
-        res_ids: &[&'l Path],
+        res_ids: &'l [PathBuf],
     ) -> impl Iterator<Item = Vec<&FileSource>> + 'l {
         res_ids
             .iter()
