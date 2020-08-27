@@ -129,3 +129,58 @@ fn test_generate_bundles_sync() {
     assert!(i.next().is_some());
     assert!(i.next().is_none());
 }
+
+#[tokio::test]
+async fn test_generate_bundles_for_lang() {
+    use futures::stream::StreamExt;
+
+    let en_us: LanguageIdentifier = "en-US".parse().unwrap();
+    let fs1 = FileSource::new(
+        "toolkit".to_string(),
+        vec![en_us.clone()],
+        "./data/toolkit/{locale}/".into(),
+    );
+    let fs2 = FileSource::new(
+        "browser".to_string(),
+        vec![en_us.clone()],
+        "./data/browser/{locale}/".into(),
+    );
+
+    let mut reg = L10nRegistry::new();
+
+    reg.register_sources(vec![fs1, fs2]).unwrap();
+
+    let paths = &[Path::new("menu.ftl"), Path::new("brand.ftl")];
+    let mut i = Box::pin(reg.generate_bundles_for_lang(&en_us, paths));
+
+    assert!(i.next().await.is_some());
+    assert!(i.next().await.is_none());
+}
+
+#[tokio::test]
+async fn test_generate_bundles() {
+    use futures::stream::StreamExt;
+
+    let en_us: LanguageIdentifier = "en-US".parse().unwrap();
+    let fs1 = FileSource::new(
+        "toolkit".to_string(),
+        vec![en_us.clone()],
+        "./data/toolkit/{locale}/".into(),
+    );
+    let fs2 = FileSource::new(
+        "browser".to_string(),
+        vec![en_us.clone()],
+        "./data/browser/{locale}/".into(),
+    );
+
+    let mut reg = L10nRegistry::new();
+
+    reg.register_sources(vec![fs1, fs2]).unwrap();
+
+    let paths = &[Path::new("menu.ftl"), Path::new("brand.ftl")];
+    let langs = &[&en_us];
+    let mut i = Box::pin(reg.generate_bundles(langs, paths));
+
+    assert!(i.next().await.is_some());
+    assert!(i.next().await.is_none());
+}
