@@ -1,6 +1,8 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::fmt;
 use std::future::Future;
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::rc::Rc;
@@ -25,7 +27,7 @@ pub enum ResourceStatus {
 impl From<ResourceOption> for ResourceStatus {
     fn from(input: ResourceOption) -> Self {
         if let Some(res) = input {
-            Self::Value(res.clone())
+            Self::Value(res)
         } else {
             Self::None
         }
@@ -50,11 +52,32 @@ fn set_resolved(
         .insert(full_path, value.into());
 }
 
+#[derive(Debug)]
 pub struct FileSource {
     pub name: String,
     pub langids: Vec<LanguageIdentifier>,
     pub pre_path: PathBuf,
     pub cache: Rc<RefCell<HashMap<PathBuf, ResourceStatus>>>,
+}
+
+impl fmt::Display for FileSource {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.name)
+    }
+}
+
+impl PartialEq<FileSource> for FileSource {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+    }
+}
+
+impl Eq for FileSource {}
+
+impl Hash for FileSource {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state)
+    }
 }
 
 impl FileSource {
