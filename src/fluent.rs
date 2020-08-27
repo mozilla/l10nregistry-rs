@@ -1,11 +1,5 @@
+use fluent::FluentBundle as FluentBundleBase;
+pub use fluent::FluentResource;
 use std::rc::Rc;
 
-#[derive(Debug)]
-pub struct FluentResource {
-    pub source: String,
-}
-
-#[derive(Debug)]
-pub struct FluentBundle {
-    pub resources: Vec<Rc<FluentResource>>,
-}
+pub type FluentBundle = FluentBundleBase<Rc<FluentResource>>;

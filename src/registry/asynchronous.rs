@@ -18,10 +18,10 @@ impl L10nRegistry {
             .map(move |sources| sources.into_iter().zip(res_ids));
 
         stream::iter(permutations).filter_map(move |sources| async move {
-            let mut bundle = FluentBundle { resources: vec![] };
+            let mut bundle = FluentBundle::new(&[langid.clone()]);
             for (source, res_id) in sources {
                 if let Some(res) = source.fetch_file(&langid, res_id).await {
-                    bundle.resources.push(res);
+                    bundle.add_resource(res).unwrap();
                 } else {
                     return None;
                 }

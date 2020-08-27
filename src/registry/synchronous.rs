@@ -14,10 +14,10 @@ impl L10nRegistry {
         self.generate_source_permutations(langid, res_ids)
             .map(move |sources| sources.into_iter().zip(res_ids))
             .filter_map(move |sources| {
-                let mut bundle = FluentBundle { resources: vec![] };
+                let mut bundle = FluentBundle::new(&[langid.clone()]);
                 for (source, res_id) in sources {
                     if let Some(res) = source.fetch_file_sync(&langid, res_id) {
-                        bundle.resources.push(res);
+                        bundle.add_resource(res).unwrap();
                     } else {
                         return None;
                     }

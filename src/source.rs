@@ -38,7 +38,7 @@ async fn read_resource<P: AsRef<Path>>(path: P) -> ResourceOption {
     gecko::fetch(path.as_ref())
         .await
         .ok()
-        .map(|source| Rc::new(FluentResource { source }))
+        .map(|source| Rc::new(FluentResource::try_new(source).unwrap()))
 }
 
 fn set_resolved(
@@ -101,7 +101,7 @@ impl FileSource {
         let res = cache.entry(full_path.clone()).or_insert_with(|| {
             gecko::fetch_sync(&full_path)
                 .ok()
-                .map(|source| Rc::new(FluentResource { source }))
+                .map(|source| Rc::new(FluentResource::try_new(source).unwrap()))
                 .into()
         });
 
