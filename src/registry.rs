@@ -37,10 +37,9 @@ impl L10nRegistry {
         langid: &'l LanguageIdentifier,
         res_id: &'l Path,
     ) -> impl Iterator<Item = &'l FileSource> + Clone {
-        let mut sources = self.sources.iter();
-        std::iter::from_fn(move || {
-            sources.find(|source| source.has_file(langid, res_id) != Some(false))
-        })
+        self.sources
+            .iter()
+            .filter(move |source| source.has_file(langid, res_id) != Some(false))
     }
 
     pub fn generate_source_permutations<'l>(
@@ -59,22 +58,19 @@ impl L10nRegistry {
         langid: &'l LanguageIdentifier,
         res_ids: &'l [&'l Path],
     ) -> impl Iterator<Item = FluentBundle> + 'l {
-        let combinations = self
-            .generate_source_permutations(langid, res_ids)
-            .map(move |sources| sources.into_iter().zip(res_ids));
-
-        combinations.filter_map(move |sources| {
-            let mut bundle = FluentBundle { resources: vec![] };
-            for (source, res_id) in sources {
-                let res = source.fetch_file_sync(&langid, res_id);
-                if let Some(res) = res {
-                    bundle.resources.push(res);
-                } else {
-                    return None;
+        self.generate_source_permutations(langid, res_ids)
+            .map(move |sources| sources.into_iter().zip(res_ids))
+            .filter_map(move |sources| {
+                let mut bundle = FluentBundle { resources: vec![] };
+                for (source, res_id) in sources {
+                    if let Some(res) = source.fetch_file_sync(&langid, res_id) {
+                        bundle.resources.push(res);
+                    } else {
+                        return None;
+                    }
                 }
-            }
-            Some(bundle)
-        })
+                Some(bundle)
+            })
     }
 
     pub fn generate_bundles_sync<'l>(
