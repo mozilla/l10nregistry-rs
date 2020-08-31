@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
@@ -6,7 +7,6 @@ use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::rc::Rc;
-use std::borrow::Borrow;
 
 use futures::future::{FutureExt, Shared};
 use unic_langid::LanguageIdentifier;

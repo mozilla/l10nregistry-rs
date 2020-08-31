@@ -1,7 +1,7 @@
 mod asynchronous;
 mod synchronous;
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use itertools::Itertools;
 use unic_langid::LanguageIdentifier;
@@ -34,23 +34,29 @@ impl L10nRegistry {
         self.sources.iter().find(|source| source.name == name)
     }
 
-    pub fn generate_sources_for_file<'l>(
+    pub fn generate_sources_for_file<'l, P>(
         &'l self,
         langid: &'l LanguageIdentifier,
-        res_id: &'l Path,
-    ) -> impl Iterator<Item = &'l FileSource> + Clone {
+        res_id: P,
+    ) -> impl Iterator<Item = &'l FileSource> + Clone
+    where
+        P: AsRef<Path> + Clone + 'l,
+    {
         self.sources
             .iter()
-            .filter(move |source| source.has_file(langid, res_id) != Some(false))
+            .filter(move |source| source.has_file(langid, res_id.as_ref()) != Some(false))
     }
 
-    pub fn generate_source_permutations<'l>(
+    pub fn generate_source_permutations<'l, P>(
         &'l self,
         langid: &'l LanguageIdentifier,
-        res_ids: &'l [PathBuf],
-    ) -> impl Iterator<Item = Vec<&FileSource>> + 'l {
+        res_ids: impl IntoIterator<Item = P>,
+    ) -> impl Iterator<Item = Vec<&FileSource>>
+    where
+        P: AsRef<Path> + Clone + 'l,
+    {
         res_ids
-            .iter()
+            .into_iter()
             .map(|res_id| self.generate_sources_for_file(langid, res_id))
             .multi_cartesian_product()
     }

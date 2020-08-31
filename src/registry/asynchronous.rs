@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 
 use futures::stream::Stream;
 use futures::stream::{self, StreamExt};
@@ -8,19 +8,22 @@ use super::L10nRegistry;
 use crate::fluent::FluentBundle;
 
 impl L10nRegistry {
-    pub fn generate_bundles_for_lang<'l>(
+    pub fn generate_bundles_for_lang<'l, P>(
         &'l self,
         langid: &'l LanguageIdentifier,
-        res_ids: &'l [PathBuf],
-    ) -> impl Stream<Item = FluentBundle> + 'l {
+        res_ids: impl IntoIterator<Item = P> + Clone + 'l,
+    ) -> impl Stream<Item = FluentBundle> + 'l
+    where
+        P: AsRef<Path> + Clone + 'l,
+    {
         let permutations = self
-            .generate_source_permutations(langid, res_ids)
-            .map(move |sources| sources.into_iter().zip(res_ids));
+            .generate_source_permutations(langid, res_ids.clone())
+            .map(move |sources| sources.into_iter().zip(res_ids.clone()));
 
         stream::iter(permutations).filter_map(move |sources| async move {
             let mut bundle = FluentBundle::new(&[langid.clone()]);
             for (source, res_id) in sources {
-                if let Some(res) = source.fetch_file(&langid, res_id).await {
+                if let Some(res) = source.fetch_file(&langid, res_id.as_ref()).await {
                     bundle.add_resource(res).unwrap();
                 } else {
                     return None;
@@ -30,13 +33,16 @@ impl L10nRegistry {
         })
     }
 
-    pub fn generate_bundles<'l>(
+    pub fn generate_bundles<'l, P>(
         &'l self,
-        lang_ids: &'l [LanguageIdentifier],
-        res_ids: &'l [PathBuf],
-    ) -> impl Stream<Item = FluentBundle> + 'l {
+        lang_ids: impl IntoIterator<Item = &'l LanguageIdentifier> + 'l,
+        res_ids: impl IntoIterator<Item = P> + Clone + 'l,
+    ) -> impl Stream<Item = FluentBundle> + 'l
+    where
+        P: AsRef<Path> + Clone + 'l,
+    {
         stream::iter(lang_ids)
-            .map(move |langid| self.generate_bundles_for_lang(langid, res_ids))
+            .map(move |langid| self.generate_bundles_for_lang(langid, res_ids.clone()))
             .flatten()
     }
 }
