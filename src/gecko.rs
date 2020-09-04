@@ -11,7 +11,3 @@ pub async fn fetch(path: &Path) -> io::Result<String> {
 
     Ok(String::from_utf8(buffer).unwrap())
 }
-
-pub fn fetch_sync(path: &Path) -> io::Result<String> {
-    std::fs::read_to_string(path)
-}

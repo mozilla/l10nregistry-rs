@@ -4,6 +4,13 @@ use unic_langid::LanguageIdentifier;
 
 use std::path::Path;
 
+fn fetch_sync(path: &Path) -> Result<Option<String>, std::io::Error> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    Ok(Some(std::fs::read_to_string(path)?))
+}
+
 #[test]
 fn test_generate_sources_for_file() {
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
@@ -11,11 +18,13 @@ fn test_generate_sources_for_file() {
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
+        fetch_sync,
     );
     let fs2 = FileSource::new(
         "browser".to_string(),
         vec![en_us.clone()],
         "./data/browser/{locale}/".into(),
+        fetch_sync,
     );
 
     let mut reg = L10nRegistry::new();
@@ -55,11 +64,13 @@ fn test_generate_source_permutations() {
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
+        fetch_sync,
     );
     let fs2 = FileSource::new(
         "browser".to_string(),
         vec![en_us.clone()],
         "./data/browser/{locale}/".into(),
+        fetch_sync,
     );
 
     let mut reg = L10nRegistry::new();
@@ -86,11 +97,13 @@ fn test_generate_bundles_for_lang_sync() {
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
+        fetch_sync,
     );
     let fs2 = FileSource::new(
         "browser".to_string(),
         vec![en_us.clone()],
         "./data/browser/{locale}/".into(),
+        fetch_sync,
     );
 
     let mut reg = L10nRegistry::new();
@@ -111,11 +124,13 @@ fn test_generate_bundles_sync() {
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
+        fetch_sync,
     );
     let fs2 = FileSource::new(
         "browser".to_string(),
         vec![en_us.clone()],
         "./data/browser/{locale}/".into(),
+        fetch_sync,
     );
 
     let mut reg = L10nRegistry::new();
@@ -139,11 +154,13 @@ async fn test_generate_bundles_for_lang() {
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
+        fetch_sync,
     );
     let fs2 = FileSource::new(
         "browser".to_string(),
         vec![en_us.clone()],
         "./data/browser/{locale}/".into(),
+        fetch_sync,
     );
 
     let mut reg = L10nRegistry::new();
@@ -166,11 +183,13 @@ async fn test_generate_bundles() {
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
+        fetch_sync,
     );
     let fs2 = FileSource::new(
         "browser".to_string(),
         vec![en_us.clone()],
         "./data/browser/{locale}/".into(),
+        fetch_sync,
     );
 
     let mut reg = L10nRegistry::new();

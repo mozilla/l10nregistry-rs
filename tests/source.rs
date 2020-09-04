@@ -4,6 +4,13 @@ use futures::future::join_all;
 use l10nregistry::source::FileSource;
 use unic_langid::LanguageIdentifier;
 
+fn fetch_sync(path: &Path) -> Result<Option<String>, std::io::Error> {
+    if !path.exists() {
+        return Ok(None);
+    }
+    Ok(Some(std::fs::read_to_string(path)?))
+}
+
 #[test]
 fn test_fetch_sync() {
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
@@ -11,6 +18,7 @@ fn test_fetch_sync() {
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
+        fetch_sync,
     );
 
     assert!(fs1.fetch_file_sync(&en_us, Path::new("menu.ftl")).is_some());
@@ -27,6 +35,7 @@ async fn test_fetch_async() {
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
+        fetch_sync,
     );
 
     assert!(fs1
@@ -51,6 +60,7 @@ async fn test_fetch_sync_2_async() {
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
+        fetch_sync,
     );
 
     assert!(fs1.fetch_file_sync(&en_us, Path::new("menu.ftl")).is_some());
@@ -69,6 +79,7 @@ async fn test_fetch_async_2_sync() {
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
+        fetch_sync,
     );
 
     assert!(fs1
@@ -88,6 +99,7 @@ fn test_fetch_has_value_sync() {
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
+        fetch_sync,
     );
 
     assert_eq!(fs1.has_file(&en_us, path), None);
@@ -109,6 +121,7 @@ async fn test_fetch_has_value_async() {
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
+        fetch_sync,
     );
 
     assert_eq!(fs1.has_file(&en_us, path), None);
@@ -130,6 +143,7 @@ async fn test_fetch_async_consequitive() {
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
+        fetch_sync,
     );
 
     let results = join_all(vec![

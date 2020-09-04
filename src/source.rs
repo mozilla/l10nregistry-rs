@@ -53,12 +53,12 @@ fn set_resolved(
         .insert(full_path, value.into());
 }
 
-#[derive(Debug)]
 pub struct FileSource {
     pub name: String,
     pub langids: Vec<LanguageIdentifier>,
     pub pre_path: PathBuf,
     pub cache: Rc<RefCell<HashMap<PathBuf, ResourceStatus>>>,
+    pub fetch_sync: fn(&Path) -> Result<Option<String>, std::io::Error>,
 }
 
 impl fmt::Display for FileSource {
@@ -82,12 +82,18 @@ impl Hash for FileSource {
 }
 
 impl FileSource {
-    pub fn new(name: String, langids: Vec<LanguageIdentifier>, pre_path: PathBuf) -> Self {
+    pub fn new(
+        name: String,
+        langids: Vec<LanguageIdentifier>,
+        pre_path: PathBuf,
+        fetch_sync: fn(&Path) -> Result<Option<String>, std::io::Error>,
+    ) -> Self {
         FileSource {
             name,
             langids,
             pre_path,
             cache: Rc::new(RefCell::new(HashMap::default())),
+            fetch_sync,
         }
     }
 
@@ -100,8 +106,8 @@ impl FileSource {
 
         let mut cache = self.cache.try_borrow_mut().unwrap();
         let res = cache.entry(full_path.clone()).or_insert_with(|| {
-            gecko::fetch_sync(&full_path)
-                .ok()
+            (self.fetch_sync)(&full_path)
+                .expect("I/O Error")
                 .map(|source| Rc::new(FluentResource::try_new(source).unwrap()))
                 .into()
         });
@@ -169,5 +175,16 @@ impl FileSource {
                 Some(ResourceStatus::Async(_)) | None => None,
             }
         }
+    }
+}
+
+impl std::fmt::Debug for FileSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("FileSource")
+            .field("name", &self.name)
+            .field("langids", &self.langids)
+            .field("pre_path", &self.pre_path)
+            .field("cache", &self.cache)
+            .finish()
     }
 }
