@@ -1,8 +1,6 @@
 mod asynchronous;
 mod synchronous;
 
-use std::path::Path;
-
 use itertools::Itertools;
 use unic_langid::LanguageIdentifier;
 
@@ -40,7 +38,7 @@ impl L10nRegistry {
         res_id: P,
     ) -> impl Iterator<Item = &'l FileSource> + Clone
     where
-        P: AsRef<Path> + Clone + 'l,
+        P: AsRef<str> + Clone + 'l,
     {
         self.sources
             .iter()
@@ -53,7 +51,7 @@ impl L10nRegistry {
         res_ids: impl IntoIterator<Item = P>,
     ) -> impl Iterator<Item = Vec<&FileSource>>
     where
-        P: AsRef<Path> + Clone + 'l,
+        P: AsRef<str> + Clone + 'l,
     {
         res_ids
             .into_iter()

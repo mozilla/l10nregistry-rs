@@ -4,7 +4,6 @@ use std::collections::HashMap;
 use std::fmt;
 use std::future::Future;
 use std::hash::{Hash, Hasher};
-use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::rc::Rc;
 
@@ -13,7 +12,6 @@ use unic_langid::LanguageIdentifier;
 
 use crate::fluent::FluentResource;
 use crate::gecko;
-use crate::uri::ResourceURI;
 
 pub type RcResource = Rc<FluentResource>;
 pub type ResourceOption = Option<RcResource>;
@@ -35,7 +33,7 @@ impl From<ResourceOption> for ResourceStatus {
     }
 }
 
-async fn read_resource<P: AsRef<Path>>(path: P) -> ResourceOption {
+async fn read_resource<P: AsRef<str>>(path: P) -> ResourceOption {
     gecko::fetch(path.as_ref())
         .await
         .ok()
@@ -43,8 +41,8 @@ async fn read_resource<P: AsRef<Path>>(path: P) -> ResourceOption {
 }
 
 fn set_resolved(
-    cache: Rc<RefCell<HashMap<PathBuf, ResourceStatus>>>,
-    full_path: PathBuf,
+    cache: Rc<RefCell<HashMap<String, ResourceStatus>>>,
+    full_path: String,
     value: ResourceOption,
 ) {
     cache
@@ -56,9 +54,9 @@ fn set_resolved(
 pub struct FileSource {
     pub name: String,
     pub langids: Vec<LanguageIdentifier>,
-    pub pre_path: PathBuf,
-    pub cache: Rc<RefCell<HashMap<PathBuf, ResourceStatus>>>,
-    pub fetch_sync: fn(&Path) -> Result<Option<String>, std::io::Error>,
+    pub pre_path: String,
+    pub cache: Rc<RefCell<HashMap<String, ResourceStatus>>>,
+    pub fetch_sync: fn(&str) -> Result<Option<String>, std::io::Error>,
 }
 
 impl fmt::Display for FileSource {
@@ -85,8 +83,8 @@ impl FileSource {
     pub fn new(
         name: String,
         langids: Vec<LanguageIdentifier>,
-        pre_path: PathBuf,
-        fetch_sync: fn(&Path) -> Result<Option<String>, std::io::Error>,
+        pre_path: String,
+        fetch_sync: fn(&str) -> Result<Option<String>, std::io::Error>,
     ) -> Self {
         FileSource {
             name,
@@ -97,12 +95,16 @@ impl FileSource {
         }
     }
 
-    fn get_path(&self, langid: &LanguageIdentifier, path: &Path) -> PathBuf {
-        self.pre_path.resolve_path(langid).join(path)
+    fn get_path(&self, langid: &LanguageIdentifier, path: &str) -> String {
+        format!(
+            "{}/{}",
+            self.pre_path.replace("{locale}", &langid.to_string()),
+            path
+        )
     }
 
-    pub fn fetch_file_sync(&self, langid: &LanguageIdentifier, path: &Path) -> ResourceOption {
-        let full_path = self.get_path(langid, path);
+    pub fn fetch_file_sync(&self, langid: &LanguageIdentifier, path: &str) -> ResourceOption {
+        let full_path = self.get_path(langid, &path);
 
         let mut cache = self.cache.try_borrow_mut().unwrap();
         let res = cache.entry(full_path.clone()).or_insert_with(|| {
@@ -115,7 +117,7 @@ impl FileSource {
         match res {
             ResourceStatus::Value(res) => Some(res.clone()),
             ResourceStatus::Async(..) => {
-                println!("[l10nregistry] Attempting to synchronously load file {} while it's being loaded asynchronously.", full_path.to_string_lossy());
+                println!("[l10nregistry] Attempting to synchronously load file {} while it's being loaded asynchronously.", &full_path);
                 cache.remove(&full_path);
                 drop(cache);
                 self.fetch_file_sync(langid, path)
@@ -124,7 +126,7 @@ impl FileSource {
         }
     }
 
-    pub async fn fetch_file(&self, langid: &LanguageIdentifier, path: &Path) -> ResourceOption {
+    pub async fn fetch_file(&self, langid: &LanguageIdentifier, path: &str) -> ResourceOption {
         let full_path = self.get_path(langid, path);
 
         let cache_cell = &self.cache;
@@ -162,7 +164,7 @@ impl FileSource {
         }
     }
 
-    pub fn has_file<L: Borrow<LanguageIdentifier>>(&self, langid: L, path: &Path) -> Option<bool> {
+    pub fn has_file<L: Borrow<LanguageIdentifier>>(&self, langid: L, path: &str) -> Option<bool> {
         let langid = langid.borrow();
         if !self.langids.contains(langid) {
             Some(false)

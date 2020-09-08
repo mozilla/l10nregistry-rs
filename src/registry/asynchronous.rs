@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use futures::stream::Stream;
 use futures::stream::{self, StreamExt};
 use unic_langid::LanguageIdentifier;
@@ -14,7 +12,7 @@ impl L10nRegistry {
         res_ids: impl IntoIterator<Item = P> + Clone + 'l,
     ) -> impl Stream<Item = FluentBundle> + 'l
     where
-        P: AsRef<Path> + Clone + 'l,
+        P: AsRef<str> + Clone + 'l,
     {
         let permutations = self
             .generate_source_permutations(langid, res_ids.clone())
@@ -39,7 +37,7 @@ impl L10nRegistry {
         res_ids: impl IntoIterator<Item = P> + Clone + 'l,
     ) -> impl Stream<Item = FluentBundle> + 'l
     where
-        P: AsRef<Path> + Clone + 'l,
+        P: AsRef<str> + Clone + 'l,
     {
         stream::iter(lang_ids)
             .map(move |langid| self.generate_bundles_for_lang(langid, res_ids.clone()))

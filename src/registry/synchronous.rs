@@ -1,5 +1,3 @@
-use std::path::Path;
-
 use super::L10nRegistry;
 use crate::fluent::FluentBundle;
 
@@ -12,7 +10,7 @@ impl L10nRegistry {
         res_ids: impl IntoIterator<Item = P> + Clone + 'l,
     ) -> impl Iterator<Item = FluentBundle> + 'l
     where
-        P: AsRef<Path> + Clone + 'l,
+        P: AsRef<str> + Clone + 'l,
     {
         self.generate_source_permutations(langid, res_ids.clone())
             .map(move |sources| sources.into_iter().zip(res_ids.clone()))
@@ -35,7 +33,7 @@ impl L10nRegistry {
         res_ids: impl IntoIterator<Item = P> + Clone + 'l,
     ) -> impl Iterator<Item = FluentBundle> + 'l
     where
-        P: AsRef<Path> + Clone + 'l,
+        P: AsRef<str> + Clone + 'l,
     {
         lang_ids
             .into_iter()

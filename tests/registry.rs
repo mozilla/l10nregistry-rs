@@ -2,10 +2,8 @@ use l10nregistry::registry::L10nRegistry;
 use l10nregistry::source::FileSource;
 use unic_langid::LanguageIdentifier;
 
-use std::path::Path;
-
-fn fetch_sync(path: &Path) -> Result<Option<String>, std::io::Error> {
-    if !path.exists() {
+fn fetch_sync(path: &str) -> Result<Option<String>, std::io::Error> {
+    if !std::path::Path::new(path).exists() {
         return Ok(None);
     }
     Ok(Some(std::fs::read_to_string(path)?))
@@ -34,25 +32,21 @@ fn test_generate_sources_for_file() {
     let toolkit = reg.get_source("toolkit").unwrap();
     let browser = reg.get_source("browser").unwrap();
 
-    let mut i = reg.generate_sources_for_file(&en_us, Path::new("menu.ftl"));
+    let mut i = reg.generate_sources_for_file(&en_us, "menu.ftl");
 
     assert_eq!(i.next(), Some(toolkit));
     assert_eq!(i.next(), Some(browser));
     assert_eq!(i.next(), None);
 
-    assert!(browser
-        .fetch_file_sync(&en_us, Path::new("menu.ftl"))
-        .is_none());
+    assert!(browser.fetch_file_sync(&en_us, "menu.ftl").is_none());
 
-    let mut i = reg.generate_sources_for_file(&en_us, Path::new("menu.ftl"));
+    let mut i = reg.generate_sources_for_file(&en_us, "menu.ftl");
     assert_eq!(i.next(), Some(toolkit));
     assert_eq!(i.next(), None);
 
-    assert!(toolkit
-        .fetch_file_sync(&en_us, Path::new("menu.ftl"))
-        .is_some());
+    assert!(toolkit.fetch_file_sync(&en_us, "menu.ftl").is_some());
 
-    let mut i = reg.generate_sources_for_file(&en_us, Path::new("menu.ftl"));
+    let mut i = reg.generate_sources_for_file(&en_us, "menu.ftl");
     assert_eq!(i.next(), Some(toolkit));
     assert_eq!(i.next(), None);
 }

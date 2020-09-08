@@ -1,11 +1,9 @@
-use std::path::Path;
-
 use futures::future::join_all;
 use l10nregistry::source::FileSource;
 use unic_langid::LanguageIdentifier;
 
-fn fetch_sync(path: &Path) -> Result<Option<String>, std::io::Error> {
-    if !path.exists() {
+fn fetch_sync(path: &str) -> Result<Option<String>, std::io::Error> {
+    if !std::path::Path::new(path).exists() {
         return Ok(None);
     }
     Ok(Some(std::fs::read_to_string(path)?))
@@ -21,10 +19,8 @@ fn test_fetch_sync() {
         fetch_sync,
     );
 
-    assert!(fs1.fetch_file_sync(&en_us, Path::new("menu.ftl")).is_some());
-    assert!(fs1
-        .fetch_file_sync(&en_us, Path::new("missing.ftl"))
-        .is_none());
+    assert!(fs1.fetch_file_sync(&en_us, "menu.ftl").is_some());
+    assert!(fs1.fetch_file_sync(&en_us, "missing.ftl").is_none());
 }
 
 #[tokio::test]
@@ -38,18 +34,9 @@ async fn test_fetch_async() {
         fetch_sync,
     );
 
-    assert!(fs1
-        .fetch_file(&en_us, Path::new("menu.ftl"))
-        .await
-        .is_some());
-    assert!(fs1
-        .fetch_file(&en_us, Path::new("missing.ftl"))
-        .await
-        .is_none());
-    assert!(fs1
-        .fetch_file(&en_us, Path::new("menu.ftl"))
-        .await
-        .is_some());
+    assert!(fs1.fetch_file(&en_us, "menu.ftl").await.is_some());
+    assert!(fs1.fetch_file(&en_us, "missing.ftl").await.is_none());
+    assert!(fs1.fetch_file(&en_us, "menu.ftl").await.is_some());
 }
 
 #[tokio::test]
@@ -63,12 +50,9 @@ async fn test_fetch_sync_2_async() {
         fetch_sync,
     );
 
-    assert!(fs1.fetch_file_sync(&en_us, Path::new("menu.ftl")).is_some());
-    assert!(fs1
-        .fetch_file(&en_us, Path::new("menu.ftl"))
-        .await
-        .is_some());
-    assert!(fs1.fetch_file_sync(&en_us, Path::new("menu.ftl")).is_some());
+    assert!(fs1.fetch_file_sync(&en_us, "menu.ftl").is_some());
+    assert!(fs1.fetch_file(&en_us, "menu.ftl").await.is_some());
+    assert!(fs1.fetch_file_sync(&en_us, "menu.ftl").is_some());
 }
 
 #[tokio::test]
@@ -82,18 +66,15 @@ async fn test_fetch_async_2_sync() {
         fetch_sync,
     );
 
-    assert!(fs1
-        .fetch_file(&en_us, Path::new("menu.ftl"))
-        .await
-        .is_some());
-    assert!(fs1.fetch_file_sync(&en_us, Path::new("menu.ftl")).is_some());
+    assert!(fs1.fetch_file(&en_us, "menu.ftl").await.is_some());
+    assert!(fs1.fetch_file_sync(&en_us, "menu.ftl").is_some());
 }
 
 #[test]
 fn test_fetch_has_value_sync() {
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-    let path = Path::new("menu.ftl");
-    let path_missing = Path::new("missing.ftl");
+    let path = "menu.ftl";
+    let path_missing = "missing.ftl";
 
     let fs1 = FileSource::new(
         "toolkit".to_string(),
@@ -114,8 +95,8 @@ fn test_fetch_has_value_sync() {
 #[tokio::test]
 async fn test_fetch_has_value_async() {
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-    let path = Path::new("menu.ftl");
-    let path_missing = Path::new("missing.ftl");
+    let path = "menu.ftl";
+    let path_missing = "missing.ftl";
 
     let fs1 = FileSource::new(
         "toolkit".to_string(),
@@ -147,15 +128,12 @@ async fn test_fetch_async_consequitive() {
     );
 
     let results = join_all(vec![
-        fs1.fetch_file(&en_us, Path::new("menu.ftl")),
-        fs1.fetch_file(&en_us, Path::new("menu.ftl")),
+        fs1.fetch_file(&en_us, "menu.ftl"),
+        fs1.fetch_file(&en_us, "menu.ftl"),
     ])
     .await;
     assert!(results[0].is_some());
     assert!(results[1].is_some());
 
-    assert!(fs1
-        .fetch_file(&en_us, Path::new("menu.ftl"))
-        .await
-        .is_some());
+    assert!(fs1.fetch_file(&en_us, "menu.ftl").await.is_some());
 }
