@@ -1,22 +1,13 @@
 use futures::future::join_all;
-use l10nregistry::source::FileSource;
 use unic_langid::LanguageIdentifier;
-
-fn fetch_sync(path: &str) -> Result<Option<String>, std::io::Error> {
-    if !std::path::Path::new(path).exists() {
-        return Ok(None);
-    }
-    Ok(Some(std::fs::read_to_string(path)?))
-}
 
 #[test]
 fn test_fetch_sync() {
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-    let fs1 = FileSource::new(
+    let fs1 = l10nregistry::tokio::file_source(
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
-        fetch_sync,
     );
 
     assert!(fs1.fetch_file_sync(&en_us, "menu.ftl").is_some());
@@ -27,11 +18,10 @@ fn test_fetch_sync() {
 async fn test_fetch_async() {
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
 
-    let fs1 = FileSource::new(
+    let fs1 = l10nregistry::tokio::file_source(
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
-        fetch_sync,
     );
 
     assert!(fs1.fetch_file(&en_us, "menu.ftl").await.is_some());
@@ -43,11 +33,10 @@ async fn test_fetch_async() {
 async fn test_fetch_sync_2_async() {
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
 
-    let fs1 = FileSource::new(
+    let fs1 = l10nregistry::tokio::file_source(
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
-        fetch_sync,
     );
 
     assert!(fs1.fetch_file_sync(&en_us, "menu.ftl").is_some());
@@ -59,11 +48,10 @@ async fn test_fetch_sync_2_async() {
 async fn test_fetch_async_2_sync() {
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
 
-    let fs1 = FileSource::new(
+    let fs1 = l10nregistry::tokio::file_source(
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
-        fetch_sync,
     );
 
     assert!(fs1.fetch_file(&en_us, "menu.ftl").await.is_some());
@@ -76,11 +64,10 @@ fn test_fetch_has_value_sync() {
     let path = "menu.ftl";
     let path_missing = "missing.ftl";
 
-    let fs1 = FileSource::new(
+    let fs1 = l10nregistry::tokio::file_source(
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
-        fetch_sync,
     );
 
     assert_eq!(fs1.has_file(&en_us, path), None);
@@ -98,11 +85,10 @@ async fn test_fetch_has_value_async() {
     let path = "menu.ftl";
     let path_missing = "missing.ftl";
 
-    let fs1 = FileSource::new(
+    let fs1 = l10nregistry::tokio::file_source(
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
-        fetch_sync,
     );
 
     assert_eq!(fs1.has_file(&en_us, path), None);
@@ -120,11 +106,10 @@ async fn test_fetch_has_value_async() {
 async fn test_fetch_async_consequitive() {
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
 
-    let fs1 = FileSource::new(
+    let fs1 = l10nregistry::tokio::file_source(
         "toolkit".to_string(),
         vec![en_us.clone()],
         "./data/toolkit/{locale}/".into(),
-        fetch_sync,
     );
 
     let results = join_all(vec![
