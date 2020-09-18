@@ -1,62 +1,73 @@
-use std::borrow::Borrow;
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::fmt;
-use std::future::Future;
-use std::hash::{Hash, Hasher};
-use std::pin::Pin;
-use std::rc::Rc;
+use crate::{fluent::FluentResource, FileFetcher};
 
-use futures::future::{FutureExt, Shared};
+use std::{
+    borrow::Borrow,
+    cell::RefCell,
+    collections::HashMap,
+    fmt,
+    hash::{Hash, Hasher},
+    pin::Pin,
+    rc::Rc,
+    task::Poll,
+};
+
+use futures::{future::Shared, Future, FutureExt};
+use log::{trace, warn};
 use unic_langid::LanguageIdentifier;
 
-use crate::fluent::FluentResource;
-use crate::gecko;
-
 pub type RcResource = Rc<FluentResource>;
-pub type ResourceOption = Option<RcResource>;
+pub type RcResourceOption = Option<RcResource>;
+pub type ResourceFuture = Shared<Pin<Box<dyn Future<Output = RcResourceOption>>>>;
 
 #[derive(Debug, Clone)]
 pub enum ResourceStatus {
-    Value(RcResource),
-    Async(Shared<Pin<Box<dyn Future<Output = ResourceOption>>>>),
-    None,
+    /// The resource is missing.  Don't bother trying to fetch.
+    Missing,
+    /// The resource is loading and future will deliver the result.
+    Loading(ResourceFuture),
+    /// The resource is loaded and parsed.
+    Loaded(RcResource),
 }
 
-impl From<ResourceOption> for ResourceStatus {
-    fn from(input: ResourceOption) -> Self {
+impl From<RcResourceOption> for ResourceStatus {
+    fn from(input: RcResourceOption) -> Self {
         if let Some(res) = input {
-            Self::Value(res)
+            Self::Loaded(res)
         } else {
-            Self::None
+            Self::Missing
         }
     }
 }
 
-async fn read_resource<P: AsRef<str>>(path: P) -> ResourceOption {
-    gecko::fetch(path.as_ref())
-        .await
-        .ok()
-        .map(|source| Rc::new(FluentResource::try_new(source).unwrap()))
+impl Future for ResourceStatus {
+    type Output = RcResourceOption;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
+        use ResourceStatus::*;
+
+        let this = &mut *self;
+
+        match this {
+            Missing => None.into(),
+            Loaded(res) => Some(res.clone()).into(),
+            Loading(res) => Pin::new(res).poll(cx),
+        }
+    }
 }
 
-fn set_resolved(
-    cache: Rc<RefCell<HashMap<String, ResourceStatus>>>,
-    full_path: String,
-    value: ResourceOption,
-) {
-    cache
-        .try_borrow_mut()
-        .unwrap()
-        .insert(full_path, value.into());
-}
-
+/// `FileSource` provides a generic fetching and caching of fluent resources.
+/// The user of `FileSource` provides a [`FileFetcher`](trait.FileFetcher.html)
+/// implementation and `FileSource` takes care of the rest.
 pub struct FileSource {
     pub name: String,
-    pub langids: Vec<LanguageIdentifier>,
-    pub pre_path: String,
-    pub cache: Rc<RefCell<HashMap<String, ResourceStatus>>>,
-    pub fetch_sync: fn(&str) -> Result<Option<String>, std::io::Error>,
+    langids: Vec<LanguageIdentifier>,
+    pre_path: String,
+    shared: Rc<Inner>,
+}
+
+struct Inner {
+    fetcher: Box<dyn FileFetcher>,
+    entries: RefCell<HashMap<String, ResourceStatus>>,
 }
 
 impl fmt::Display for FileSource {
@@ -80,21 +91,26 @@ impl Hash for FileSource {
 }
 
 impl FileSource {
+    /// Create a `FileSource` using the provided [`FileFetcher`](../trait.FileFetcher.html).
     pub fn new(
         name: String,
         langids: Vec<LanguageIdentifier>,
         pre_path: String,
-        fetch_sync: fn(&str) -> Result<Option<String>, std::io::Error>,
+        fetcher: impl FileFetcher + 'static,
     ) -> Self {
         FileSource {
             name,
             langids,
             pre_path,
-            cache: Rc::new(RefCell::new(HashMap::default())),
-            fetch_sync,
+            shared: Rc::new(Inner {
+                entries: RefCell::new(HashMap::default()),
+                fetcher: Box::new(fetcher),
+            }),
         }
     }
+}
 
+impl FileSource {
     fn get_path(&self, langid: &LanguageIdentifier, path: &str) -> String {
         format!(
             "{}/{}",
@@ -103,79 +119,79 @@ impl FileSource {
         )
     }
 
-    pub fn fetch_file_sync(&self, langid: &LanguageIdentifier, path: &str) -> ResourceOption {
+    fn fetch_sync(&self, full_path: &str) -> RcResourceOption {
+        self.shared
+            .fetcher
+            .fetch_sync(full_path).ok()
+            .and_then(|source| FluentResource::try_new(source).ok())
+            .map(Rc::new)
+    }
+
+    /// Attempt to synchronously fetch resource for the combination of `langid`
+    /// and `path`. Returns `Some(RcResource)` if the resource is available,
+    /// else `None`.
+    pub fn fetch_file_sync(&self, langid: &LanguageIdentifier, path: &str) -> RcResourceOption {
+        use ResourceStatus::*;
+
         let full_path = self.get_path(langid, &path);
 
-        let mut cache = self.cache.try_borrow_mut().unwrap();
-        let res = cache.entry(full_path.clone()).or_insert_with(|| {
-            (self.fetch_sync)(&full_path)
-                .expect("I/O Error")
-                .map(|source| Rc::new(FluentResource::try_new(source).unwrap()))
-                .into()
-        });
+        trace!("[l10nregistry] fetch_file_sync: {}", full_path);
+
+        let res = self
+            .shared
+            .lookup_resource(full_path.clone(), || self.fetch_sync(&full_path).into());
 
         match res {
-            ResourceStatus::Value(res) => Some(res.clone()),
-            ResourceStatus::Async(..) => {
-                println!("[l10nregistry] Attempting to synchronously load file {} while it's being loaded asynchronously.", &full_path);
-                cache.remove(&full_path);
-                drop(cache);
-                self.fetch_file_sync(langid, path)
+            Missing => None,
+            Loaded(res) => Some(res),
+            Loading(..) => {
+                // A sync load has been requested for the same resource that has
+                // a pending async load in progress. How do we handle this?
+                //
+                // Ideally, we would sync load and resolve all the pending
+                // futures with the result. With the current Futures and
+                // combinators, it's unclear how to proceed. One potential
+                // solution is to store a oneshot::Sender and
+                // Shared<oneshot::Receiver>. When the async loading future
+                // resolves it would check that the state is still `Loading`,
+                // and if so, send the result. The sync load would do the same
+                // send on the oneshot::Sender.
+                //
+                // For now, we warn and return the resource, paying the cost of
+                // duplication of the resource.
+                warn!("[l10nregistry] Attempting to synchronously load file {} while it's being loaded asynchronously.", &full_path);
+                self.fetch_sync(&full_path)
             }
-            ResourceStatus::None => None,
         }
     }
 
-    pub async fn fetch_file(&self, langid: &LanguageIdentifier, path: &str) -> ResourceOption {
+    /// Attempt to fetch resource for the combination of `langid` and `path`.
+    /// Returns [`ResourceStatus`](enum.ResourceStatus.html) which is
+    /// a `Future` that can be polled.
+    pub fn fetch_file(&self, langid: &LanguageIdentifier, path: &str) -> ResourceStatus {
+        use ResourceStatus::*;
+
         let full_path = self.get_path(langid, path);
 
-        let cache_cell = &self.cache;
-        let mut cache = cache_cell.try_borrow_mut().unwrap();
-        let cloned_full_path = full_path.clone();
+        trace!("[l10nregistry] fetch_file: {}", full_path);
 
-        let res = cache
-            .entry(full_path.clone())
-            .or_insert_with(|| {
-                let cache = self.cache.clone();
-                ResourceStatus::Async(
-                    read_resource(full_path)
-                        // We inspect here to extract the result of the async call
-                        // and put it into the cache.
-                        // This allows for `has_file` to synchronusly verify that a path
-                        // has no file once the future is resolved.
-                        //
-                        // This requires extranous locks on the cache, and I'd like to
-                        // try to use `MaybeDone` instead to check on a `Async` variant of the
-                        // `ResourceStatus` and see if it has been resolved.
-                        // My initial attempt to use it didn't work, but that may be just
-                        // my lack of experience with the API.
-                        .inspect(|res| set_resolved(cache, cloned_full_path, res.clone()))
-                        .boxed_local()
-                        .shared(),
-                )
-            })
-            .clone();
-        drop(cache);
-
-        match res {
-            ResourceStatus::Value(res) => Some(res),
-            ResourceStatus::Async(res) => res.await,
-            ResourceStatus::None => None,
-        }
+        self.shared.lookup_resource(full_path.clone(), || {
+            let shared = self.shared.clone();
+            Loading(read_resource(full_path, shared).boxed_local().shared())
+        })
     }
 
+    /// Determine if the `FileSource` has a loaded resource for the combination
+    /// of `langid` and `path`. Returns `Some(true)` if the file is loaded, else
+    /// `Some(false)`. `None` is returned if there is an outstanding async fetch
+    /// pending and the status is yet to be determined.
     pub fn has_file<L: Borrow<LanguageIdentifier>>(&self, langid: L, path: &str) -> Option<bool> {
         let langid = langid.borrow();
         if !self.langids.contains(langid) {
             Some(false)
         } else {
             let full_path = self.get_path(langid, path);
-            let cache = self.cache.try_borrow().unwrap();
-            match cache.get(&full_path) {
-                Some(ResourceStatus::Value(_)) => Some(true),
-                Some(ResourceStatus::None) => Some(false),
-                Some(ResourceStatus::Async(_)) | None => None,
-            }
+            self.shared.has_file(&full_path)
         }
     }
 }
@@ -186,7 +202,118 @@ impl std::fmt::Debug for FileSource {
             .field("name", &self.name)
             .field("langids", &self.langids)
             .field("pre_path", &self.pre_path)
-            .field("cache", &self.cache)
             .finish()
+    }
+}
+
+impl Inner {
+    fn lookup_resource<F>(&self, path: String, f: F) -> ResourceStatus
+    where
+        F: FnOnce() -> ResourceStatus,
+    {
+        let mut lock = self.entries.borrow_mut();
+        lock.entry(path).or_insert_with(|| f()).clone()
+    }
+
+    fn update_resource(&self, path: String, resource: RcResourceOption) -> RcResourceOption {
+        let mut lock = self.entries.borrow_mut();
+        let entry = lock.get_mut(&path);
+        match entry {
+            Some(entry) => *entry = resource.clone().into(),
+            _ => panic!("Expected "),
+        }
+        resource
+    }
+
+    pub fn has_file(&self, full_path: &str) -> Option<bool> {
+        match self.entries.borrow().get(full_path) {
+            Some(ResourceStatus::Missing) => Some(false),
+            Some(ResourceStatus::Loaded(_)) => Some(true),
+            Some(ResourceStatus::Loading(_)) | None => None,
+        }
+    }
+}
+
+async fn read_resource(path: String, shared: Rc<Inner>) -> RcResourceOption {
+    let resource =
+        shared.fetcher.fetch(&path).await.ok().map(|source| {
+            Rc::new(FluentResource::try_new(source).expect("Failed to parse source"))
+        });
+    // insert the resource into the cache
+    shared.update_resource(path, resource)
+}
+
+#[cfg(test)]
+mod tests {
+    use unic_langid::LanguageIdentifier;
+
+    #[tokio::test]
+    async fn file_source_fetch() {
+        let en_us: LanguageIdentifier = "en-US".parse().unwrap();
+        let fs1 = crate::tokio::file_source(
+            "toolkit".to_string(),
+            vec![en_us.clone()],
+            "./data/toolkit/{locale}".into(),
+        );
+
+        let file = fs1.fetch_file(&en_us, "menu.ftl").await;
+        assert!(file.is_some());
+    }
+
+    #[tokio::test]
+    async fn file_source_fetch_missing() {
+        let en_us: LanguageIdentifier = "en-US".parse().unwrap();
+        let fs1 = crate::tokio::file_source(
+            "toolkit".to_string(),
+            vec![en_us.clone()],
+            "./data/toolkit/{locale}".into(),
+        );
+
+        let file = fs1.fetch_file(&en_us, "missing.ftl").await;
+        assert!(file.is_none());
+    }
+
+    #[tokio::test]
+    async fn file_source_already_loaded() {
+        let en_us: LanguageIdentifier = "en-US".parse().unwrap();
+        let fs1 = crate::tokio::file_source(
+            "toolkit".to_string(),
+            vec![en_us.clone()],
+            "./data/toolkit/{locale}".into(),
+        );
+
+        let file = fs1.fetch_file(&en_us, "menu.ftl").await;
+        assert!(file.is_some());
+        let file = fs1.fetch_file(&en_us, "menu.ftl").await;
+        assert!(file.is_some());
+    }
+
+    #[tokio::test]
+    async fn file_source_concurrent() {
+        let en_us: LanguageIdentifier = "en-US".parse().unwrap();
+        let fs1 = crate::tokio::file_source(
+            "toolkit".to_string(),
+            vec![en_us.clone()],
+            "./data/toolkit/{locale}".into(),
+        );
+
+        let file1 = fs1.fetch_file(&en_us, "menu.ftl");
+        let file2 = fs1.fetch_file(&en_us, "menu.ftl");
+        assert!(file1.await.is_some());
+        assert!(file2.await.is_some());
+    }
+
+    #[test]
+    fn file_source_sync_after_async_fail() {
+        let en_us: LanguageIdentifier = "en-US".parse().unwrap();
+        let fs1 = crate::tokio::file_source(
+            "toolkit".to_string(),
+            vec![en_us.clone()],
+            "./data/toolkit/{locale}".into(),
+        );
+
+        let _ = fs1.fetch_file(&en_us, "menu.ftl");
+        let file2 = fs1.fetch_file_sync(&en_us, "menu.ftl");
+        assert!(file2.is_some());
     }
 }
