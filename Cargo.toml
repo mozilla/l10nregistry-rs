@@ -9,4 +9,4 @@ futures = "0.3"
 tokio = { version = "0.2", features = ["fs", "rt-threaded", "macros"] }
 unic-langid = "0.9"
 itertools = "0.9"
-fluent = "0.12"
+fluent = "0.13"
