@@ -4,6 +4,8 @@ use std::io;
 pub mod fluent;
 pub mod registry;
 pub mod source;
+
+#[cfg(feature = "tokio")]
 pub mod tokio;
 
 mod futures;

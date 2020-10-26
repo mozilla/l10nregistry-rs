@@ -120,6 +120,7 @@ impl BundleGenerator for L10nRegistry {
 }
 
 #[cfg(test)]
+#[cfg(feature = "tokio")]
 mod tests {
     use super::*;
 

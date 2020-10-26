@@ -122,7 +122,8 @@ impl FileSource {
     fn fetch_sync(&self, full_path: &str) -> RcResourceOption {
         self.shared
             .fetcher
-            .fetch_sync(full_path).ok()
+            .fetch_sync(full_path)
+            .ok()
             .and_then(|source| FluentResource::try_new(source).ok())
             .map(Rc::new)
     }
@@ -244,6 +245,7 @@ async fn read_resource(path: String, shared: Rc<Inner>) -> RcResourceOption {
 }
 
 #[cfg(test)]
+#[cfg(feature = "tokio")]
 mod tests {
     use unic_langid::LanguageIdentifier;
 
