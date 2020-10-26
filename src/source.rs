@@ -245,6 +245,7 @@ async fn read_resource(path: String, shared: Rc<Inner>) -> RcResourceOption {
 }
 
 #[cfg(test)]
+#[cfg(feature = "tokio")]
 mod tests {
     use unic_langid::LanguageIdentifier;
 

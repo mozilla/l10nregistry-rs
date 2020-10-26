@@ -14,5 +14,19 @@ futures = "0.3"
 itertools = "0.9"
 log = "0.4"
 pin-project = "1.0"
-tokio = { version = "0.2", features = ["fs", "rt-threaded", "macros"] }
 unic-langid = "0.9"
+tokio = { version = "0.3", optional = true, features = ["fs", "rt-multi-thread", "macros", "io-util"] }
+
+[features]
+default = []
+tokio-io = ["tokio"]
+
+[[test]]
+name = "source"
+path = "tests/source.rs"
+required-features = ["tokio"]
+
+[[test]]
+name = "registry"
+path = "tests/registry.rs"
+required-features = ["tokio"]

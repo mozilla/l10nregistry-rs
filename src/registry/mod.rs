@@ -124,6 +124,7 @@ impl BundleGeneratorSync for L10nRegistry {
 }
 
 #[cfg(test)]
+#[cfg(feature = "tokio")]
 mod tests {
     use super::*;
 
