@@ -1,13 +1,32 @@
 [package]
 name = "l10nregistry"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Zibi Braniecki <gandalf@mozilla.com>"]
 license = "Apache-2.0/MIT"
 edition = "2018"
 
 [dependencies]
+async-trait = "0.1"
+chunky-vec = "0.1"
+fluent = { version = "0.13", path = "../fluent-rs/fluent" }
+fluent-fallback = { path = "../fluent-rs/fluent-fallback" }
 futures = "0.3"
-tokio = { version = "0.2", features = ["fs", "rt-threaded", "macros"] }
-unic-langid = "0.9"
 itertools = "0.9"
-fluent = "0.13"
+log = "0.4"
+pin-project = "1.0"
+unic-langid = "0.9"
+tokio = { version = "0.3", optional = true, features = ["fs", "rt-multi-thread", "macros", "io-util"] }
+
+[features]
+default = []
+tokio-io = ["tokio"]
+
+[[test]]
+name = "source"
+path = "tests/source.rs"
+required-features = ["tokio"]
+
+[[test]]
+name = "registry"
+path = "tests/registry.rs"
+required-features = ["tokio"]
