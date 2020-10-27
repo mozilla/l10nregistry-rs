@@ -11,7 +11,7 @@ use std::{
 use crate::source::FileSource;
 
 use chunky_vec::ChunkyVec;
-use fluent::FluentResource;
+use fluent_bundle::FluentResource;
 use fluent_fallback::{BundleGenerator, BundleGeneratorSync};
 use itertools::Itertools;
 use unic_langid::LanguageIdentifier;
