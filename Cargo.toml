@@ -8,7 +8,7 @@ edition = "2018"
 [dependencies]
 async-trait = "0.1"
 chunky-vec = "0.1"
-fluent-bundle = { version = "0.13" }
+fluent-bundle = { version = "0.13", path = "../fluent-rs/fluent-bundle" }
 fluent-fallback = { path = "../fluent-rs/fluent-fallback" }
 futures = "0.3"
 itertools = "0.9"
