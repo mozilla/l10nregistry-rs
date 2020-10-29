@@ -133,12 +133,12 @@ mod tests {
         let fs1 = crate::tokio::file_source(
             "toolkit".to_string(),
             vec![en_us.clone()],
-            "./data/toolkit/{locale}".into(),
+            "./tests/resources/toolkit/{locale}/".into(),
         );
         let fs2 = crate::tokio::file_source(
             "browser".to_string(),
             vec![en_us.clone()],
-            "./data/browser/{locale}".into(),
+            "./tests/resources/browser/{locale}/".into(),
         );
 
         reg.register_sources(vec![fs1, fs2]).unwrap();
@@ -163,7 +163,7 @@ mod tests {
         test_setup_registry(&mut reg);
 
         let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let resource_ids = ["brand.ftl", "menu.ftl"];
+        let resource_ids = ["browser/brand.ftl", "toolkit/menu.ftl"];
         for (i, order) in permute_iter(reg.lock().len(), resource_ids.len()).enumerate() {
             let set = reg
                 .lock()
@@ -184,7 +184,7 @@ mod tests {
         test_setup_registry(&mut reg);
 
         let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let resource_ids = ["brand.ftl", "menu.ftl"];
+        let resource_ids = ["browser/brand.ftl", "toolkit/menu.ftl"];
         for (i, order) in permute_iter(reg.lock().len(), resource_ids.len()).enumerate() {
             let set = reg
                 .lock()

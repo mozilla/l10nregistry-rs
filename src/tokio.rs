@@ -32,16 +32,20 @@ mod tests {
     #[tokio::test]
     async fn fetch_string_present() {
         let fetcher = TokioFileFetcher;
-        let s = fetcher.fetch("./data/toolkit/en-US/menu.ftl".into()).await;
+        let s = fetcher
+            .fetch("./tests/resources/toolkit/en-US/toolkit/menu.ftl".into())
+            .await;
         assert!(s.is_ok());
         let s = s.unwrap();
-        assert_eq!(s.len(), 65);
+        assert_eq!(s.len(), 82);
     }
 
     #[tokio::test]
     async fn fetch_string_missing() {
         let fetcher = TokioFileFetcher;
-        let s = fetcher.fetch("./data/toolkit/en-US/brand.ftl".into()).await;
+        let s = fetcher
+            .fetch("./tests/resources/toolkit/en-US/toolkit/brand.ftl".into())
+            .await;
         assert!(s.is_err());
     }
 }

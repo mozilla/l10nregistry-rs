@@ -7,12 +7,12 @@ fn test_generate_sources_for_file() {
     let fs1 = l10nregistry::tokio::file_source(
         "toolkit".to_string(),
         vec![en_us.clone()],
-        "./data/toolkit/{locale}/".into(),
+        "./tests/resources/toolkit/{locale}".into(),
     );
     let fs2 = l10nregistry::tokio::file_source(
         "browser".to_string(),
         vec![en_us.clone()],
-        "./data/browser/{locale}/".into(),
+        "./tests/resources/browser/{locale}".into(),
     );
 
     let mut reg = L10nRegistry::default();
@@ -24,21 +24,25 @@ fn test_generate_sources_for_file() {
         let toolkit = lock.get_source("toolkit").unwrap();
         let browser = lock.get_source("browser").unwrap();
 
-        let mut i = lock.generate_sources_for_file(&en_us, "menu.ftl");
+        let mut i = lock.generate_sources_for_file(&en_us, "toolkit/menu.ftl");
 
         assert_eq!(i.next(), Some(toolkit));
         assert_eq!(i.next(), Some(browser));
         assert_eq!(i.next(), None);
 
-        assert!(browser.fetch_file_sync(&en_us, "menu.ftl").is_none());
+        assert!(browser
+            .fetch_file_sync(&en_us, "toolkit/menu.ftl")
+            .is_none());
 
-        let mut i = lock.generate_sources_for_file(&en_us, "menu.ftl");
+        let mut i = lock.generate_sources_for_file(&en_us, "toolkit/menu.ftl");
         assert_eq!(i.next(), Some(toolkit));
         assert_eq!(i.next(), None);
 
-        assert!(toolkit.fetch_file_sync(&en_us, "menu.ftl").is_some());
+        assert!(toolkit
+            .fetch_file_sync(&en_us, "toolkit/menu.ftl")
+            .is_some());
 
-        let mut i = lock.generate_sources_for_file(&en_us, "menu.ftl");
+        let mut i = lock.generate_sources_for_file(&en_us, "toolkit/menu.ftl");
         assert_eq!(i.next(), Some(toolkit));
         assert_eq!(i.next(), None);
     }
@@ -50,18 +54,18 @@ fn test_generate_bundles_for_lang_sync() {
     let fs1 = l10nregistry::tokio::file_source(
         "toolkit".to_string(),
         vec![en_us.clone()],
-        "./data/toolkit/{locale}/".into(),
+        "./tests/resources/toolkit/{locale}".into(),
     );
     let fs2 = l10nregistry::tokio::file_source(
         "browser".to_string(),
         vec![en_us.clone()],
-        "./data/browser/{locale}/".into(),
+        "./tests/resources/browser/{locale}".into(),
     );
 
     let mut reg = L10nRegistry::default();
     reg.register_sources(vec![fs1, fs2]).unwrap();
 
-    let paths = vec!["menu.ftl".into(), "brand.ftl".into()];
+    let paths = vec!["toolkit/menu.ftl".into(), "browser/brand.ftl".into()];
     let mut i = reg.generate_bundles_for_lang_sync(en_us.clone(), paths);
 
     assert!(i.next().is_some());
@@ -74,18 +78,18 @@ fn test_generate_bundles_sync() {
     let fs1 = l10nregistry::tokio::file_source(
         "toolkit".to_string(),
         vec![en_us.clone()],
-        "./data/toolkit/{locale}".into(),
+        "./tests/resources/toolkit/{locale}".into(),
     );
     let fs2 = l10nregistry::tokio::file_source(
         "browser".to_string(),
         vec![en_us.clone()],
-        "./data/browser/{locale}".into(),
+        "./tests/resources/browser/{locale}".into(),
     );
 
     let mut reg = L10nRegistry::default();
     reg.register_sources(vec![fs1, fs2]).unwrap();
 
-    let paths = vec!["menu.ftl".into(), "brand.ftl".into()];
+    let paths = vec!["toolkit/menu.ftl".into(), "browser/brand.ftl".into()];
     let lang_ids = vec![en_us];
     let mut i = reg.generate_bundles_sync(lang_ids, paths);
 
@@ -101,18 +105,18 @@ async fn test_generate_bundles_for_lang() {
     let fs1 = l10nregistry::tokio::file_source(
         "toolkit".to_string(),
         vec![en_us.clone()],
-        "./data/toolkit/{locale}".into(),
+        "./tests/resources/toolkit/{locale}".into(),
     );
     let fs2 = l10nregistry::tokio::file_source(
         "browser".to_string(),
         vec![en_us.clone()],
-        "./data/browser/{locale}".into(),
+        "./tests/resources/browser/{locale}".into(),
     );
 
     let mut reg = L10nRegistry::default();
     reg.register_sources(vec![fs1, fs2]).unwrap();
 
-    let paths = vec!["menu.ftl".into(), "brand.ftl".into()];
+    let paths = vec!["toolkit/menu.ftl".into(), "browser/brand.ftl".into()];
     let mut i = reg.generate_bundles_for_lang(en_us, paths);
 
     assert!(i.next().await.is_some());
@@ -127,18 +131,18 @@ async fn test_generate_bundles() {
     let fs1 = l10nregistry::tokio::file_source(
         "toolkit".to_string(),
         vec![en_us.clone()],
-        "./data/toolkit/{locale}/".into(),
+        "./tests/resources/toolkit/{locale}".into(),
     );
     let fs2 = l10nregistry::tokio::file_source(
         "browser".to_string(),
         vec![en_us.clone()],
-        "./data/browser/{locale}/".into(),
+        "./tests/resources/browser/{locale}".into(),
     );
 
     let mut reg = L10nRegistry::default();
     reg.register_sources(vec![fs1, fs2]).unwrap();
 
-    let paths = vec!["menu.ftl".into(), "brand.ftl".into()];
+    let paths = vec!["toolkit/menu.ftl".into(), "browser/brand.ftl".into()];
     let langs = vec![en_us];
     let mut i = reg.generate_bundles(langs, paths);
 

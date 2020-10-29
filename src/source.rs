@@ -255,10 +255,10 @@ mod tests {
         let fs1 = crate::tokio::file_source(
             "toolkit".to_string(),
             vec![en_us.clone()],
-            "./data/toolkit/{locale}".into(),
+            "./tests/resources/toolkit/{locale}/".into(),
         );
 
-        let file = fs1.fetch_file(&en_us, "menu.ftl").await;
+        let file = fs1.fetch_file(&en_us, "toolkit/menu.ftl").await;
         assert!(file.is_some());
     }
 
@@ -268,7 +268,7 @@ mod tests {
         let fs1 = crate::tokio::file_source(
             "toolkit".to_string(),
             vec![en_us.clone()],
-            "./data/toolkit/{locale}".into(),
+            "./tests/resources/toolkit/{locale}/".into(),
         );
 
         let file = fs1.fetch_file(&en_us, "missing.ftl").await;
@@ -281,12 +281,12 @@ mod tests {
         let fs1 = crate::tokio::file_source(
             "toolkit".to_string(),
             vec![en_us.clone()],
-            "./data/toolkit/{locale}".into(),
+            "./tests/resources/toolkit/{locale}/".into(),
         );
 
-        let file = fs1.fetch_file(&en_us, "menu.ftl").await;
+        let file = fs1.fetch_file(&en_us, "toolkit/menu.ftl").await;
         assert!(file.is_some());
-        let file = fs1.fetch_file(&en_us, "menu.ftl").await;
+        let file = fs1.fetch_file(&en_us, "toolkit/menu.ftl").await;
         assert!(file.is_some());
     }
 
@@ -296,11 +296,11 @@ mod tests {
         let fs1 = crate::tokio::file_source(
             "toolkit".to_string(),
             vec![en_us.clone()],
-            "./data/toolkit/{locale}".into(),
+            "./tests/resources/toolkit/{locale}/".into(),
         );
 
-        let file1 = fs1.fetch_file(&en_us, "menu.ftl");
-        let file2 = fs1.fetch_file(&en_us, "menu.ftl");
+        let file1 = fs1.fetch_file(&en_us, "toolkit/menu.ftl");
+        let file2 = fs1.fetch_file(&en_us, "toolkit/menu.ftl");
         assert!(file1.await.is_some());
         assert!(file2.await.is_some());
     }
@@ -311,11 +311,11 @@ mod tests {
         let fs1 = crate::tokio::file_source(
             "toolkit".to_string(),
             vec![en_us.clone()],
-            "./data/toolkit/{locale}".into(),
+            "./tests/resources/toolkit/{locale}/".into(),
         );
 
-        let _ = fs1.fetch_file(&en_us, "menu.ftl");
-        let file2 = fs1.fetch_file_sync(&en_us, "menu.ftl");
+        let _ = fs1.fetch_file(&en_us, "toolkit/menu.ftl");
+        let file2 = fs1.fetch_file_sync(&en_us, "toolkit/menu.ftl");
         assert!(file2.is_some());
     }
 }

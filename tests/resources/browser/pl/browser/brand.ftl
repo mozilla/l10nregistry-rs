@@ -1,0 +1,1 @@
+-app-name = MyApp [browser][pl]
