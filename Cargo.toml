@@ -20,10 +20,15 @@ tokio = { version = "0.3", optional = true, features = ["fs", "rt-multi-thread",
 [dev-dependencies]
 unic-langid = { version = "0.9", features = ["macros"] }
 serial_test = "0.5"
+criterion = "0.3"
 
 [features]
 default = []
 tokio-io = ["tokio"]
+
+[[bench]]
+name = "preferences"
+harness = false
 
 [[test]]
 name = "source"
