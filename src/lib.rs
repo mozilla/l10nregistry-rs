@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use std::io;
 
 pub mod fluent;
+pub mod iter;
 pub mod registry;
 pub mod source;
 

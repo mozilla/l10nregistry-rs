@@ -1,4 +1,3 @@
-
 use criterion::criterion_group;
 use criterion::criterion_main;
 use criterion::Criterion;
@@ -40,14 +39,14 @@ fn preferences_bench(c: &mut Criterion) {
                 "browser".to_string(),
                 locales.clone(),
                 "./tests/resources/browser/{locale}".into(),
-                );
+            );
             let toolkit_fs = l10nregistry::tokio::file_source(
                 "toolkit".to_string(),
                 locales.clone(),
                 "./tests/resources/toolkit/{locale}".into(),
-                );
+            );
 
-            reg.register_sources(vec![browser_fs, toolkit_fs]).unwrap();
+            reg.register_sources(vec![toolkit_fs, browser_fs]).unwrap();
 
             let paths = res_ids.iter().map(|&r| r.into()).collect();
             let mut i = reg.generate_bundles_for_lang_sync(locales[0].clone(), paths);
@@ -57,8 +56,5 @@ fn preferences_bench(c: &mut Criterion) {
     });
 }
 
-criterion_group!(
-    benches,
-    preferences_bench
-);
+criterion_group!(benches, preferences_bench);
 criterion_main!(benches);
