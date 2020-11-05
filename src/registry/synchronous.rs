@@ -1,36 +1,19 @@
-use std::{iter::Rev, ops::Range, rc::Rc};
+use std::rc::Rc;
 
 use super::{L10nRegistry, L10nRegistryLocked};
 use crate::fluent::{FluentBundle, FluentResource};
+use fluent_fallback::generator::BundleIterator;
 
 use unic_langid::LanguageIdentifier;
 
-pub type FluentResourceSet = Vec<Rc<FluentResource>>;
-
 impl<'a> L10nRegistryLocked<'a> {
-    pub(crate) fn generate_resource_set_sync<P>(
+    pub fn get_file_from_source(
         &self,
         langid: &LanguageIdentifier,
-        source_order: &[usize],
-        resource_ids: &[P],
-    ) -> Option<FluentResourceSet>
-    where
-        P: AsRef<str>,
-    {
-        debug_assert_eq!(source_order.len(), resource_ids.len());
-        let mut result = vec![];
-        for (&idx, path) in source_order
-            .iter()
-            .zip(resource_ids.iter().map(AsRef::as_ref))
-        {
-            let source = self.source_idx(idx);
-            if let Some(resource) = source.fetch_file_sync(langid, path) {
-                result.push(resource)
-            } else {
-                return None;
-            }
-        }
-        Some(result)
+        source: usize,
+        res_id: &str,
+    ) -> Option<Rc<FluentResource>> {
+        self.source_idx(source).fetch_file_sync(langid, res_id)
     }
 }
 
@@ -54,14 +37,13 @@ impl L10nRegistry {
     }
 }
 
+use crate::solver::SerialProblemSolver;
+
 pub struct GenerateBundlesSync {
+    solver: Option<SerialProblemSolver>,
+    resource_ids: Vec<String>,
     reg: L10nRegistry,
     lang_ids: <Vec<LanguageIdentifier> as IntoIterator>::IntoIter,
-    resource_ids: Vec<String>,
-    state: Option<(
-        LanguageIdentifier,
-        itertools::MultiProduct<Rev<Range<usize>>>,
-    )>,
 }
 
 impl GenerateBundlesSync {
@@ -71,10 +53,25 @@ impl GenerateBundlesSync {
         resource_ids: Vec<String>,
     ) -> Self {
         Self {
-            reg,
             lang_ids: lang_ids.into_iter(),
             resource_ids,
-            state: None,
+            reg,
+            solver: None,
+        }
+    }
+}
+
+impl BundleIterator for GenerateBundlesSync {
+    type Resource = Rc<FluentResource>;
+
+    fn prefetch(&mut self) {
+        if let Some(solver) = &mut self.solver {
+            solver.prefetch();
+        } else if let Some(lang) = self.lang_ids.next() {
+            let mut solver =
+                SerialProblemSolver::new(self.resource_ids.clone(), lang, self.reg.clone());
+            solver.prefetch();
+            self.solver = Some(solver);
         }
     }
 }
@@ -84,25 +81,21 @@ impl Iterator for GenerateBundlesSync {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if let Some((ref mut langid, ref mut source_orders)) = self.state {
-                for source_order in source_orders {
-                    if let Some(set) = self.reg.lock().generate_resource_set_sync(
-                        langid,
-                        &source_order,
-                        &self.resource_ids,
-                    ) {
-                        let mut bundle = FluentBundle::new(&[langid.clone()]);
-                        for res in set {
-                            bundle.add_resource(res).unwrap()
-                        }
-                        return Some(bundle);
-                    }
+            if let Some(solver) = &mut self.solver {
+                if let Some(bundle) = solver.next_bundle() {
+                    return Some(bundle);
+                } else {
+                    self.solver = None;
+                    continue;
                 }
+            } else if let Some(lang) = self.lang_ids.next() {
+                let solver =
+                    SerialProblemSolver::new(self.resource_ids.clone(), lang, self.reg.clone());
+                self.solver = Some(solver);
+                continue;
+            } else {
+                return None;
             }
-
-            let lang_id = self.lang_ids.next()?;
-            let source_orders = super::permute_iter(self.reg.lock().len(), self.resource_ids.len());
-            self.state = Some((lang_id, source_orders))
         }
     }
 }

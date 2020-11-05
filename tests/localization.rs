@@ -1,6 +1,4 @@
-use std::borrow::Cow;
-
-use fluent_fallback::{AsyncLocalization, L10nKey, SyncLocalization};
+use fluent_fallback::{Localization, L10nKey};
 use l10nregistry::registry::L10nRegistry;
 use l10nregistry::testing::get_test_file_source;
 use serial_test::serial;
@@ -42,26 +40,26 @@ fn get_app_locales() -> &'static [LanguageIdentifier] {
 fn sync_localization(
     reg: &'static L10nRegistry,
     res_ids: Vec<String>,
-) -> SyncLocalization<L10nRegistry> {
-    SyncLocalization::with_generator(res_ids, reg.clone())
+) -> Localization<L10nRegistry> {
+    Localization::with_generator(res_ids, true, reg.clone())
 }
 
 fn async_localization(
     reg: &'static L10nRegistry,
     res_ids: Vec<String>,
-) -> AsyncLocalization<L10nRegistry> {
-    AsyncLocalization::with_generator(res_ids, reg.clone())
+) -> Localization<L10nRegistry> {
+    Localization::with_generator(res_ids, false, reg.clone())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn setup_sync_test() -> SyncLocalization<L10nRegistry> {
+    fn setup_sync_test() -> Localization<L10nRegistry> {
         sync_localization(get_l10n_registry(), vec![FTL_RESOURCE.into()])
     }
 
-    fn setup_async_test() -> AsyncLocalization<L10nRegistry> {
+    fn setup_async_test() -> Localization<L10nRegistry> {
         async_localization(get_l10n_registry(), vec![FTL_RESOURCE.into()])
     }
 
@@ -69,9 +67,10 @@ mod tests {
     #[serial]
     fn localization_format_value_sync() {
         let loc = setup_sync_test();
+        let mut errors = vec![];
 
         for query in &[L10N_ID_PL_EN, L10N_ID_MISSING, L10N_ID_ONLY_EN] {
-            let value = loc.format_value_sync(query.0, None);
+            let value = loc.format_value_sync(query.0, None, &mut errors);
             let result = query.1.unwrap_or(query.0);
             assert_eq!(value, result);
         }
@@ -86,17 +85,19 @@ mod tests {
         let keys = ids
             .iter()
             .map(|query| L10nKey {
-                id: query.0.to_string(),
+                id: query.0.into(),
                 args: None,
             })
             .collect::<Vec<_>>();
 
-        let values = loc.format_values_sync(&keys);
+        let mut errors = vec![];
+        let values = loc.format_values_sync(&keys, &mut errors);
 
         assert_eq!(values.len(), ids.len());
 
         for (value, query) in values.iter().zip(ids) {
-            assert_eq!(value.clone(), query.1.map(|v| Cow::Borrowed(v)));
+            let result = query.1.unwrap_or(query.0);
+            assert_eq!(value.clone(), result);
         }
     }
 
@@ -104,9 +105,10 @@ mod tests {
     #[serial]
     async fn localization_format_value_async() {
         let loc = setup_async_test();
+        let mut errors = vec![];
 
         for query in &[L10N_ID_PL_EN, L10N_ID_MISSING, L10N_ID_ONLY_EN] {
-            let value = loc.format_value(query.0, None).await;
+            let value = loc.format_value(query.0, None, &mut errors).await;
             let result = query.1.unwrap_or(query.0);
             assert_eq!(value, result);
         }
@@ -121,30 +123,33 @@ mod tests {
         let keys = ids
             .iter()
             .map(|query| L10nKey {
-                id: query.0.to_string(),
+                id: query.0.into(),
                 args: None,
             })
             .collect::<Vec<_>>();
 
-        let values = loc.format_values(&keys).await;
+        let mut errors = vec![];
+        let values = loc.format_values(&keys, &mut errors).await;
 
         assert_eq!(values.len(), ids.len());
 
         for (value, query) in values.iter().zip(ids) {
-            assert_eq!(value.clone(), query.1.map(|v| Cow::Borrowed(v)));
+            let result = query.1.unwrap_or(query.0);
+            assert_eq!(value.clone(), result);
         }
     }
 
     #[tokio::test]
     #[serial]
     async fn localization_upgrade() {
-        let loc = setup_sync_test();
-        let value = loc.format_value_sync(L10N_ID_PL_EN.0, None);
+        let mut loc = setup_sync_test();
+        let mut errors = vec![];
+        let value = loc.format_value_sync(L10N_ID_PL_EN.0, None, &mut errors);
         let expected = L10N_ID_PL_EN.1.unwrap_or(L10N_ID_PL_EN.0);
         assert_eq!(value, expected);
 
-        let loc = loc.upgrade();
-        let value = loc.format_value(L10N_ID_PL_EN.0, None).await;
+        loc.set_async();
+        let value = loc.format_value(L10N_ID_PL_EN.0, None, &mut errors).await;
         let expected = L10N_ID_PL_EN.1.unwrap_or(L10N_ID_PL_EN.0);
         assert_eq!(value, expected);
     }
