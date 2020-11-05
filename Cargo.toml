@@ -16,6 +16,8 @@ log = "0.4"
 pin-project = "1.0"
 unic-langid = "0.9"
 tokio = { version = "0.3", optional = true, features = ["fs", "rt-multi-thread", "macros", "io-util"] }
+tracing = "0.1"
+tracing-subscriber = "0.2"
 
 [dev-dependencies]
 unic-langid = { version = "0.9", features = ["macros"] }
@@ -28,6 +30,11 @@ tokio-io = ["tokio"]
 
 [[bench]]
 name = "preferences"
+harness = false
+required-features = ["tokio"]
+
+[[bench]]
+name = "sync"
 harness = false
 
 [[test]]
@@ -44,3 +51,6 @@ required-features = ["tokio"]
 name = "localization"
 path = "tests/localization.rs"
 required-features = ["tokio"]
+
+[profile.release]
+debug = true

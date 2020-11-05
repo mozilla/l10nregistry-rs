@@ -1,3 +1,4 @@
+use std::time::Instant;
 use std::{iter::Rev, ops::Range, rc::Rc};
 
 use super::{L10nRegistry, L10nRegistryLocked};
@@ -83,9 +84,12 @@ impl Iterator for GenerateBundlesSync {
     type Item = FluentBundle;
 
     fn next(&mut self) -> Option<Self::Item> {
+        // let now = Instant::now();
+        // println!("GenerateBundlesSync::next");
         loop {
             if let Some((ref mut langid, ref mut source_orders)) = self.state {
                 for source_order in source_orders {
+                    // println!("GenerateBundlesSync::next source_order: {:#?}.", source_order);
                     if let Some(set) = self.reg.lock().generate_resource_set_sync(
                         langid,
                         &source_order,
@@ -95,6 +99,8 @@ impl Iterator for GenerateBundlesSync {
                         for res in set {
                             bundle.add_resource(res).unwrap()
                         }
+                        // let diff = now.elapsed().as_nanos();
+                        // println!("GenerateBundlesSync::next end: {} ns.", diff);
                         return Some(bundle);
                     }
                 }
