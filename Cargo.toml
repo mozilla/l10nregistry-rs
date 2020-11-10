@@ -34,7 +34,7 @@ harness = false
 required-features = ["tokio"]
 
 [[bench]]
-name = "sync"
+name = "iter"
 harness = false
 
 [[test]]

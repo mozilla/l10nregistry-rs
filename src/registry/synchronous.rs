@@ -33,6 +33,20 @@ impl<'a> L10nRegistryLocked<'a> {
         }
         Some(result)
     }
+
+    pub fn get_file_from_source(
+        &self,
+        langid: &LanguageIdentifier,
+        source: usize,
+        res_id: &str,
+    ) -> Option<Rc<FluentResource>> {
+        let source = self.source_idx(source);
+        if let Some(resource) = source.fetch_file_sync(langid, res_id) {
+            Some(resource)
+        } else {
+            None
+        }
+    }
 }
 
 impl L10nRegistry {
@@ -55,7 +69,10 @@ impl L10nRegistry {
     }
 }
 
+// use crate::solver::{ProblemSolver, SerialProblemSolver};
+
 pub struct GenerateBundlesSync {
+    // iter: ProblemSolver,
     reg: L10nRegistry,
     lang_ids: <Vec<LanguageIdentifier> as IntoIterator>::IntoIter,
     resource_ids: Vec<String>,
@@ -76,6 +93,7 @@ impl GenerateBundlesSync {
             lang_ids: lang_ids.into_iter(),
             resource_ids,
             state: None,
+            // iter: ProblemSolver::new(resource_ids.clone(), lang_ids[0].clone(), reg),
         }
     }
 }
@@ -84,9 +102,16 @@ impl Iterator for GenerateBundlesSync {
     type Item = FluentBundle;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // let now = Instant::now();
+        let now = Instant::now();
         // println!("GenerateBundlesSync::next");
         loop {
+            // if let Some(bundle) = self.iter.next_bundle() {
+            //     let diff = now.elapsed().as_nanos();
+            //     println!("GenerateBundlesSync::next end: {} ns.", diff);
+            //     return Some(bundle);
+            // } else {
+            //     return None;
+            // }
             if let Some((ref mut langid, ref mut source_orders)) = self.state {
                 for source_order in source_orders {
                     // println!("GenerateBundlesSync::next source_order: {:#?}.", source_order);
@@ -99,8 +124,8 @@ impl Iterator for GenerateBundlesSync {
                         for res in set {
                             bundle.add_resource(res).unwrap()
                         }
-                        // let diff = now.elapsed().as_nanos();
-                        // println!("GenerateBundlesSync::next end: {} ns.", diff);
+                        let diff = now.elapsed().as_nanos();
+                        println!("GenerateBundlesSync::next end: {} ns.", diff);
                         return Some(bundle);
                     }
                 }

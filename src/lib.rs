@@ -2,8 +2,8 @@ use async_trait::async_trait;
 use std::io;
 
 pub mod fluent;
-pub mod iter;
 pub mod registry;
+pub mod solver;
 pub mod source;
 
 #[cfg(feature = "tokio")]

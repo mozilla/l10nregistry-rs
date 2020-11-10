@@ -34,9 +34,9 @@ pub(crate) fn permute_iter(
 }
 
 #[derive(Default)]
-struct Shared {
+pub struct Shared {
     lang_ids: Vec<LanguageIdentifier>,
-    sources: RefCell<ChunkyVec<FileSource>>,
+    pub sources: RefCell<ChunkyVec<FileSource>>,
 }
 
 pub struct L10nRegistryLocked<'a> {
@@ -76,7 +76,7 @@ impl<'a> L10nRegistryLocked<'a> {
 
 #[derive(Clone, Default)]
 pub struct L10nRegistry {
-    shared: Rc<Shared>,
+    pub shared: Rc<Shared>,
 }
 
 impl L10nRegistry {
