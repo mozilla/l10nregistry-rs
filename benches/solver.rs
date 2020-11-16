@@ -3,7 +3,6 @@ use criterion::criterion_main;
 use criterion::Criterion;
 
 use l10nregistry::solver::testing::get_scenarios;
-use l10nregistry::solver::ProblemSolver;
 use l10nregistry::solver::{ParallelProblemSolver, SerialProblemSolver};
 use unic_langid::LanguageIdentifier;
 
@@ -20,18 +19,22 @@ fn sync_bench(c: &mut Criterion) {
 
         group.bench_function(&format!("serial/{}", scenario.name), move |b| {
             b.iter(|| {
-                let mut gen = ProblemSolver::new(res_ids.clone(), langid.clone(), reg.clone());
-                while let Some(_) = <ProblemSolver as SerialProblemSolver>::next(&mut gen) {}
+                let mut gen =
+                    SerialProblemSolver::new(res_ids.clone(), langid.clone(), reg.clone());
+                while let Some(_) = gen.next() {}
             })
         });
 
         let reg = scenario.get_l10nregistry();
         let langid: LanguageIdentifier = "en-US".parse().unwrap();
 
+        let mut rt = tokio::runtime::Runtime::new().unwrap();
+
         group.bench_function(&format!("parallel/{}", scenario.name), move |b| {
             b.iter(|| {
-                let mut gen = ProblemSolver::new(res_ids.clone(), langid.clone(), reg.clone());
-                while let Some(_) = <ProblemSolver as ParallelProblemSolver>::next(&mut gen) {}
+                let mut gen =
+                    ParallelProblemSolver::new(res_ids.clone(), langid.clone(), reg.clone());
+                rt.block_on(async { while let Some(_) = gen.next().await {} });
             })
         });
 

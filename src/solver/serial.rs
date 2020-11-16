@@ -1,17 +1,36 @@
 use super::ProblemSolver;
 use crate::fluent::FluentBundle;
+use crate::registry::L10nRegistry;
+use std::ops::{Deref, DerefMut};
+use unic_langid::LanguageIdentifier;
 
-// Streaming Iterator (return refs to its own field)
-// Solver with backtracking
-
-pub trait SerialProblemSolver {
-    fn next(&mut self) -> Option<&Vec<usize>>;
-    fn next_bundle(&mut self) -> Option<FluentBundle>;
+pub struct SerialProblemSolver {
+    solver: ProblemSolver,
 }
 
-impl SerialProblemSolver for ProblemSolver {
+impl Deref for SerialProblemSolver {
+    type Target = ProblemSolver;
+
+    fn deref(&self) -> &Self::Target {
+        &self.solver
+    }
+}
+
+impl DerefMut for SerialProblemSolver {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.solver
+    }
+}
+
+impl SerialProblemSolver {
+    pub fn new(keys: Vec<String>, langid: LanguageIdentifier, reg: L10nRegistry) -> Self {
+        Self {
+            solver: ProblemSolver::new(keys, langid, reg),
+        }
+    }
+
     #[inline]
-    fn next(&mut self) -> Option<&Vec<usize>> {
+    pub fn next(&mut self) -> Option<&Vec<usize>> {
         if self.solution.is_complete() {
             if !self.solution.bail() {
                 return None;
@@ -34,7 +53,7 @@ impl SerialProblemSolver for ProblemSolver {
     }
 
     #[inline]
-    fn next_bundle(&mut self) -> Option<FluentBundle> {
+    pub fn next_bundle(&mut self) -> Option<FluentBundle> {
         if self.solution.is_complete() {
             if !self.solution.bail() {
                 return None;
@@ -71,7 +90,7 @@ mod tests {
 
         for scenario in scenarios {
             let reg = scenario.get_l10nregistry();
-            let mut gen = ProblemSolver::new(scenario.res_ids.clone(), langid.clone(), reg);
+            let mut gen = SerialProblemSolver::new(scenario.res_ids.clone(), langid.clone(), reg);
 
             if let Some(solutions) = &scenario.solutions {
                 let mut i = 0;

@@ -1,9 +1,6 @@
 use l10nregistry::registry::L10nRegistry;
 
-use tracing::{info, Level};
-use tracing_subscriber::FmtSubscriber;
-
-const res_ids: &[&str] = &[
+const RES_IDS: &[&str] = &[
     "branding/brand.ftl",
     "browser/branding/brandings.ftl",
     "browser/branding/sync-brand.ftl",
@@ -27,14 +24,6 @@ const res_ids: &[&str] = &[
 ];
 
 fn main() {
-    let subscriber = tracing_subscriber::FmtSubscriber::builder()
-        // all spans/events with a level higher than TRACE (e.g, debug, info, warn, etc.)
-        // will be written to stdout.
-        .with_max_level(Level::TRACE)
-        // builds the subscriber.
-        .finish();
-    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
-
     let locales = vec!["en-US".parse().unwrap()];
     let mut reg = L10nRegistry::default();
 
@@ -53,8 +42,8 @@ fn main() {
 
     reg.register_sources(vec![toolkit_fs, browser_fs]).unwrap();
 
-    let paths = res_ids.iter().map(|&r| r.into()).collect();
-    let mut i = reg.generate_bundles_for_lang_sync(locales[0].clone(), paths);
+    let paths = RES_IDS.iter().map(|&r| r.into()).collect();
+    let mut i = reg.generate_bundles_sync(locales, paths);
 
     assert!(i.next().is_some());
 }
