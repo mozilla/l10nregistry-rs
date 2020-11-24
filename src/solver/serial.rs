@@ -31,10 +31,11 @@ impl SerialProblemSolver {
 
     #[inline]
     pub fn next(&mut self) -> Option<&Vec<usize>> {
-        if self.solution.is_complete() {
+        if self.solution.dirty {
             if !self.solution.bail() {
                 return None;
             }
+            self.solution.dirty = false;
         }
         loop {
             if !self.test_solution() {
@@ -44,6 +45,7 @@ impl SerialProblemSolver {
                 continue;
             }
             if self.solution.is_complete() {
+                self.solution.dirty = true;
                 return Some(&self.solution.candidate);
             }
             if !self.solution.advance() {
@@ -54,10 +56,11 @@ impl SerialProblemSolver {
 
     #[inline]
     pub fn next_bundle(&mut self) -> Option<FluentBundle> {
-        if self.solution.is_complete() {
+        if self.solution.dirty {
             if !self.solution.bail() {
                 return None;
             }
+            self.solution.dirty = false;
         }
         loop {
             if !self.test_solution() {
@@ -67,6 +70,7 @@ impl SerialProblemSolver {
                 continue;
             }
             if self.solution.is_complete() {
+                self.solution.dirty = true;
                 return Some(self.get_bundle());
             }
             if !self.solution.advance() {

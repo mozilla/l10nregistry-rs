@@ -4,7 +4,10 @@ use l10nregistry::solver::SerialProblemSolver;
 fn main() {
     let scenarios = get_scenarios();
 
-    let scenario = scenarios.iter().find(|s| s.name == "incomplete").unwrap();
+    let scenario = scenarios
+        .iter()
+        .find(|s| s.name == "one-res-two-sources")
+        .unwrap();
 
     let reg = scenario.get_l10nregistry();
 

@@ -35,6 +35,7 @@ impl ProblemSolver {
                 depth,
                 candidate: vec![0; width],
                 idx: 0,
+                dirty: false,
             },
 
             cache: vec![vec![None; depth]; width],

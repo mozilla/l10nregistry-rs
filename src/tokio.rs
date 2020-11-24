@@ -16,7 +16,7 @@ impl FileFetcher for TokioFileFetcher {
         let mut f = ::tokio::fs::File::open(path).await?;
         let mut s = String::new();
         f.read_to_string(&mut s).await?;
-        println!("read = {}", s);
+        // println!("read = {}", s);
         Ok(s)
     }
 }

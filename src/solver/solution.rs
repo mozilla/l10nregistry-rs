@@ -4,6 +4,7 @@ pub struct Solution {
     pub depth: usize,
     pub candidate: Vec<usize>,
     pub idx: usize,
+    pub dirty: bool,
 }
 
 impl Solution {

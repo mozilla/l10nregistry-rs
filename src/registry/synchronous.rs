@@ -13,11 +13,7 @@ impl<'a> L10nRegistryLocked<'a> {
         res_id: &str,
     ) -> Option<Rc<FluentResource>> {
         let source = self.source_idx(source);
-        if let Some(resource) = source.fetch_file_sync(langid, res_id) {
-            Some(resource)
-        } else {
-            None
-        }
+        source.fetch_file_sync(langid, res_id)
     }
 }
 

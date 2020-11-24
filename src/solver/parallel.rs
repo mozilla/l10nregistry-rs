@@ -44,10 +44,11 @@ impl ParallelProblemSolver {
     }
 
     pub async fn next(&mut self) -> Option<&Vec<usize>> {
-        if self.solution.is_complete() {
+        if self.solution.dirty {
             if !self.solution.bail() {
                 return None;
             }
+            self.solution.dirty = false;
         }
         while self.solution.advance_to_completion() {
             if let Err(idx) = self.test_complete_solution().await {
@@ -58,16 +59,18 @@ impl ParallelProblemSolver {
                 }
                 continue;
             }
+            self.solution.dirty = true;
             return Some(&self.solution.candidate);
         }
         None
     }
 
     pub async fn next_bundle(&mut self) -> Option<FluentBundle> {
-        if self.solution.is_complete() {
+        if self.solution.dirty {
             if !self.solution.bail() {
                 return None;
             }
+            self.solution.dirty = false;
         }
         while self.solution.advance_to_completion() {
             if let Err(idx) = self.test_complete_solution().await {
@@ -78,6 +81,7 @@ impl ParallelProblemSolver {
                 }
                 continue;
             }
+            self.solution.dirty = true;
             return Some(self.get_bundle());
         }
         None
