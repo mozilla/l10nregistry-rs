@@ -52,16 +52,25 @@ impl ParallelProblemSolver {
             self.solution.dirty = false;
         }
         while self.solution.advance_to_completion() {
-            if let Err(idx) = self.test_complete_solution().await {
+            let mut first_fail = None;
+            for (idx, res) in self.test_complete_solution().await.iter().enumerate() {
+                let source_idx = self.solution.candidate[idx];
+                if first_fail.is_none() && res.is_none() {
+                    first_fail = Some(idx);
+                }
+                self.cache[idx][source_idx] = Some(res.clone());
+            }
+            if let Some(idx) = first_fail {
                 self.solution.idx = idx;
                 self.solution.prune();
                 if !self.solution.bail() {
                     return None;
                 }
                 continue;
+            } else {
+                self.solution.dirty = true;
+                return Some(&self.solution.candidate);
             }
-            self.solution.dirty = true;
-            return Some(&self.solution.candidate);
         }
         None
     }
@@ -78,41 +87,41 @@ impl Stream for ParallelProblemSolver {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        'outer: loop {
-            if let Some(stream) = &mut self.current_stream {
-                match ready!(stream.poll_unpin(cx)) {
-                    Ok(set) => {
-                        self.current_stream = None;
-                        let mut bundle = FluentBundle::new(&[self.langid.clone()]);
-                        for res in set {
-                            bundle.add_resource(res).unwrap()
-                        }
-                        self.solution.dirty = true;
-                        return Some(bundle).into();
-                    }
-                    Err(idx) => {
-                        self.solution.idx = idx;
-                        self.solution.prune();
-                        if !self.solution.bail() {
-                            return None.into();
-                        }
-                        self.current_stream = None;
-                        continue 'outer;
-                    }
-                }
-            } else {
-                if self.solution.dirty {
-                    if !self.solution.bail() {
-                        return None.into();
-                    }
-                    self.solution.dirty = false;
-                }
-                while self.solution.advance_to_completion() {
-                    self.current_stream = Some(self.test_complete_solution());
-                    continue 'outer;
-                }
-            }
-        }
+        // 'outer: loop {
+        //     if let Some(stream) = &mut self.current_stream {
+        //         match ready!(stream.poll_unpin(cx)) {
+        //             Ok(set) => {
+        //                 self.current_stream = None;
+        //                 let mut bundle = FluentBundle::new(&[self.langid.clone()]);
+        //                 for res in set {
+        //                     bundle.add_resource(res).unwrap()
+        //                 }
+        //                 self.solution.dirty = true;
+        //                 return Some(bundle).into();
+        //             }
+        //             Err(idx) => {
+        //                 self.solution.idx = idx;
+        //                 self.solution.prune();
+        //                 if !self.solution.bail() {
+        //                     return None.into();
+        //                 }
+        //                 self.current_stream = None;
+        //                 continue 'outer;
+        //             }
+        //         }
+        //     } else {
+        //         if self.solution.dirty {
+        //             if !self.solution.bail() {
+        //                 return None.into();
+        //             }
+        //             self.solution.dirty = false;
+        //         }
+        //         while self.solution.advance_to_completion() {
+        //             self.current_stream = Some(self.test_complete_solution());
+        //             continue 'outer;
+        //         }
+        //     }
+        // }
         None.into()
     }
 }

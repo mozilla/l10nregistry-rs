@@ -3,6 +3,8 @@ mod synchronous;
 
 use std::{
     cell::{Ref, RefCell},
+    iter::Rev,
+    ops::Range,
     rc::Rc,
 };
 
@@ -12,12 +14,25 @@ use chunky_vec::ChunkyVec;
 use fluent_bundle::{FluentBundle, FluentResource};
 use fluent_fallback::{BundleGenerator, BundleGeneratorSync};
 use futures::Stream;
+use itertools::Itertools;
 use unic_langid::LanguageIdentifier;
 
 pub use asynchronous::{GenerateBundles, GenerateVec};
 pub use synchronous::GenerateBundlesSync;
 
 pub type FluentResourceSet = Vec<Rc<FluentResource>>;
+
+/// Generate a permutation of all registered source file indices for `length`
+/// in reverse order. ie. The last source added to the registry with `add_source`
+/// is returned first.
+pub(crate) fn permute_iter(
+    source_count: usize,
+    length: usize,
+) -> itertools::MultiProduct<Rev<Range<usize>>> {
+    (0..length)
+        .map(|_| (0..source_count).rev())
+        .multi_cartesian_product()
+}
 
 #[derive(Default)]
 pub struct Shared {
@@ -193,7 +208,10 @@ mod tests {
         test_setup_registry(&mut reg);
 
         let en_us: Vec<LanguageIdentifier> = vec!["en-US".parse().unwrap()];
-        let resource_ids = vec!["browser/brand.ftl".to_string(), "toolkit/menu.ftl".to_string()];
+        let resource_ids = vec![
+            "browser/brand.ftl".to_string(),
+            "toolkit/menu.ftl".to_string(),
+        ];
         let mut gen = GenerateVec::new(reg, en_us, resource_ids);
         let xx = gen.next().await.unwrap();
         assert!(!xx.iter().all(Option::is_some));
