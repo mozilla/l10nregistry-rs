@@ -16,7 +16,7 @@ use fluent_fallback::{BundleGenerator, BundleGeneratorSync};
 use itertools::Itertools;
 use unic_langid::LanguageIdentifier;
 
-pub use asynchronous::GenerateBundles;
+pub use asynchronous::{GenerateBundles, GenerateVec};
 pub use synchronous::GenerateBundlesSync;
 
 pub type FluentResourceSet = Vec<Rc<FluentResource>>;
@@ -127,6 +127,7 @@ impl BundleGeneratorSync for L10nRegistry {
 #[cfg(feature = "tokio")]
 mod tests {
     use super::*;
+    use futures::StreamExt;
 
     fn test_setup_registry(reg: &mut L10nRegistry) {
         let en_us: LanguageIdentifier = "en-US".parse().unwrap();
@@ -178,25 +179,45 @@ mod tests {
         }
     }
 
+    // #[tokio::test]
+    // async fn generate_resource_set_async() {
+    //     let mut reg = L10nRegistry::default();
+    //     test_setup_registry(&mut reg);
+
+    //     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
+    //     let resource_ids = ["browser/brand.ftl", "toolkit/menu.ftl"];
+    //     for (i, order) in permute_iter(reg.lock().len(), resource_ids.len()).enumerate() {
+    //         let set = reg
+    //             .lock()
+    //             .generate_resource_set(&en_us, &order, &resource_ids)
+    //             .await;
+    //         if i == 1 {
+    //             assert!(set.is_some());
+    //             let set = set.unwrap();
+    //             assert_eq!(set.len(), 2);
+    //         } else {
+    //             assert!(set.is_none());
+    //         }
+    //     }
+    // }
+
     #[tokio::test]
-    async fn generate_resource_set_async() {
+    async fn generate_vec() {
         let mut reg = L10nRegistry::default();
         test_setup_registry(&mut reg);
 
-        let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let resource_ids = ["browser/brand.ftl", "toolkit/menu.ftl"];
-        for (i, order) in permute_iter(reg.lock().len(), resource_ids.len()).enumerate() {
-            let set = reg
-                .lock()
-                .generate_resource_set(&en_us, &order, &resource_ids)
-                .await;
-            if i == 1 {
-                assert!(set.is_some());
-                let set = set.unwrap();
-                assert_eq!(set.len(), 2);
-            } else {
-                assert!(set.is_none());
-            }
-        }
+        let en_us: Vec<LanguageIdentifier> = vec!["en-US".parse().unwrap()];
+        let resource_ids = vec!["browser/brand.ftl".to_string(), "toolkit/menu.ftl".to_string()];
+        let mut gen = GenerateVec::new(reg, en_us, resource_ids);
+        let xx = gen.next().await.unwrap();
+        assert!(!xx.iter().all(Option::is_some));
+        let xx = gen.next().await.unwrap();
+        assert!(xx.iter().all(Option::is_some));
+        let xx = gen.next().await.unwrap();
+        assert!(!xx.iter().all(Option::is_some));
+        let xx = gen.next().await.unwrap();
+        assert!(!xx.iter().all(Option::is_some));
+        let xx = gen.next().await;
+        assert!(xx.is_none());
     }
 }
