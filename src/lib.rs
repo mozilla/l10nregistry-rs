@@ -8,8 +8,6 @@ pub mod source;
 #[cfg(feature = "tokio")]
 pub mod tokio;
 
-mod futures;
-
 pub use source::FileSource;
 
 /// The users of [`FileSource`] implement this trait to provide loading of
