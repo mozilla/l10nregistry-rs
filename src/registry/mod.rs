@@ -1,4 +1,4 @@
-mod asynchronous;
+pub mod asynchronous;
 mod synchronous;
 
 use std::{
@@ -96,8 +96,7 @@ impl BundleGenerator for L10nRegistry {
     type Stream = GenerateBundles;
 
     fn bundles(&self, resource_ids: Vec<String>) -> Self::Stream {
-        panic!();
-        // self.generate_bundles(self.shared.lang_ids.clone(), resource_ids)
+        self.generate_bundles(self.shared.lang_ids.clone(), resource_ids)
     }
 }
 
