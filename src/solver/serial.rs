@@ -29,6 +29,40 @@ impl SerialProblemSolver {
         }
     }
 
+    fn fetch_cell(&mut self, res_idx: usize, source_idx: usize) -> bool {
+        let key = self.keys[res_idx].clone();
+        let file = self
+            .reg
+            .lock()
+            .get_file_from_source(&self.langid, source_idx, &key);
+
+        let result = file.is_some();
+        self.solution.cache[res_idx][source_idx] = Some(file);
+        result
+    }
+
+    fn test_current_cell(&mut self) -> bool {
+        let res_idx = self.solution.idx;
+        let source_idx = self.solution.candidate[res_idx];
+        let cell = &self.solution.cache[res_idx][source_idx];
+        if let Some(val) = cell {
+            return val.is_some();
+        } else {
+            self.fetch_cell(res_idx, source_idx)
+        }
+    }
+
+    fn get_bundle(&self) -> FluentBundle {
+        let mut bundle = FluentBundle::new(&[self.langid.clone()]);
+        for (res_idx, source_idx) in self.solution.candidate.iter().enumerate() {
+            let cell = &self.solution.cache[res_idx][*source_idx];
+            bundle
+                .add_resource(cell.as_ref().unwrap().as_ref().unwrap().clone())
+                .unwrap()
+        }
+        return bundle;
+    }
+
     #[inline]
     pub fn next(&mut self) -> Option<&Vec<usize>> {
         if self.solution.dirty {
@@ -38,7 +72,7 @@ impl SerialProblemSolver {
             self.solution.dirty = false;
         }
         loop {
-            if !self.test_solution() {
+            if !self.test_current_cell() {
                 if !self.solution.bail() {
                     return None;
                 }
@@ -48,7 +82,7 @@ impl SerialProblemSolver {
                 self.solution.dirty = true;
                 return Some(&self.solution.candidate);
             }
-            if !self.solution.advance() {
+            if !self.solution.try_advance_resource() {
                 return None;
             }
         }
@@ -63,7 +97,7 @@ impl SerialProblemSolver {
             self.solution.dirty = false;
         }
         loop {
-            if !self.test_solution() {
+            if !self.test_current_cell() {
                 if !self.solution.bail() {
                     return None;
                 }
@@ -73,7 +107,7 @@ impl SerialProblemSolver {
                 self.solution.dirty = true;
                 return Some(self.get_bundle());
             }
-            if !self.solution.advance() {
+            if !self.solution.try_advance_resource() {
                 return None;
             }
         }

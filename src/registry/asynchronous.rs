@@ -21,20 +21,21 @@ use unic_langid::LanguageIdentifier;
 pub type ResourceSetStream = Collect<FuturesOrdered<ResourceStatus>, Vec<RcResourceOption>>;
 
 impl<'a> L10nRegistryLocked<'a> {
-    pub(crate) fn generate_resource_set<P>(
+    pub(crate) fn generate_resource_set<I, P>(
         &self,
         langid: &LanguageIdentifier,
-        source_order: &[usize],
-        resource_ids: &[P],
+        keys: &[P],
+        requests: I,
     ) -> ResourceSetStream
     where
+        I: Iterator<Item = (usize, &usize)>,
         P: AsRef<str>,
     {
-        debug_assert_eq!(source_order.len(), resource_ids.len());
-        let stream = source_order
-            .iter()
-            .zip(resource_ids.iter().map(AsRef::as_ref))
-            .map(|(&idx, path)| self.source_idx(idx).fetch_file(langid, path))
+        let stream = requests
+            .map(|(res_idx, source_idx)| {
+                self.source_idx(*source_idx)
+                    .fetch_file(langid, keys[res_idx].as_ref())
+            })
             .collect::<FuturesOrdered<_>>();
         stream.collect()
     }
@@ -106,63 +107,64 @@ impl Stream for GenerateBundles {
         //     }
         // }
         // ```
-        loop {
-            // Do we have state from last time?
-            if let Some(State {
-                lang_id,
-                source_orders,
-                resource_set,
-            }) = &mut this.state
-            {
-                'inner: loop {
-                    // Loop over all the source order combinations...
-                    if let Some(fut) = resource_set {
-                        // We have a pending Future to produce <Vec<Option<FluentResource>>>. Poll it...
-                        let set = ready!(fut.poll_unpin(cx));
-                        let _ = resource_set.take(); // A result is ready, clear the future.
-                                                     // Construct Bundle from the Resources in the set.
-                        let mut bundle = FluentBundle::new(&[lang_id.clone()]);
-                        for res in set {
-                            if let Some(res) = res {
-                                // TODO: add_resource returns `Result`
-                                // this could become a `TryStream`
-                                bundle
-                                    .add_resource(res)
-                                    .expect("Failed to add resource to bundle");
-                            } else {
-                                return None.into();
-                            }
-                        }
-                        return Some(bundle).into();
-                    }
+        None.into()
+        // loop {
+        //     // Do we have state from last time?
+        //     if let Some(State {
+        //         lang_id,
+        //         source_orders,
+        //         resource_set,
+        //     }) = &mut this.state
+        //     {
+        //         'inner: loop {
+        //             // Loop over all the source order combinations...
+        //             if let Some(fut) = resource_set {
+        //                 // We have a pending Future to produce <Vec<Option<FluentResource>>>. Poll it...
+        //                 let set = ready!(fut.poll_unpin(cx));
+        //                 let _ = resource_set.take(); // A result is ready, clear the future.
+        //                                              // Construct Bundle from the Resources in the set.
+        //                 let mut bundle = FluentBundle::new(&[lang_id.clone()]);
+        //                 for res in set {
+        //                     if let Some(res) = res {
+        //                         // TODO: add_resource returns `Result`
+        //                         // this could become a `TryStream`
+        //                         bundle
+        //                             .add_resource(res)
+        //                             .expect("Failed to add resource to bundle");
+        //                     } else {
+        //                         return None.into();
+        //                     }
+        //                 }
+        //                 return Some(bundle).into();
+        //             }
 
-                    // No pending Future, create the next one...
-                    if let Some(source_order) = source_orders.next() {
-                        resource_set.replace(this.reg.lock().generate_resource_set(
-                            lang_id,
-                            &source_order,
-                            &this.resource_ids,
-                        ));
-                    } else {
-                        break 'inner;
-                    }
-                }
-            }
+        //             // No pending Future, create the next one...
+        //             if let Some(source_order) = source_orders.next() {
+        //                 resource_set.replace(this.reg.lock().generate_resource_set(
+        //                     lang_id,
+        //                     &source_order,
+        //                     &this.resource_ids,
+        //                 ));
+        //             } else {
+        //                 break 'inner;
+        //             }
+        //         }
+        //     }
 
-            // Move to the next LanguageIdentifier and reset the source permutation...
-            if let Some(lang_id) = this.lang_ids.next() {
-                let source_orders =
-                    super::permute_iter(this.reg.lock().len(), this.resource_ids.len());
-                this.state = Some(State {
-                    lang_id,
-                    source_orders,
-                    resource_set: None,
-                })
-            } else {
-                // No lang_id remaining. All done!
-                return None.into();
-            }
-        }
+        //     // Move to the next LanguageIdentifier and reset the source permutation...
+        //     if let Some(lang_id) = this.lang_ids.next() {
+        //         let source_orders =
+        //             super::permute_iter(this.reg.lock().len(), this.resource_ids.len());
+        //         this.state = Some(State {
+        //             lang_id,
+        //             source_orders,
+        //             resource_set: None,
+        //         })
+        //     } else {
+        //         // No lang_id remaining. All done!
+        //         return None.into();
+        //     }
+        // }
     }
 }
 
@@ -206,49 +208,50 @@ impl Stream for GenerateVec {
         //     }
         // }
         // ```
-        loop {
-            // Do we have state from last time?
-            if let Some(State {
-                lang_id,
-                source_orders,
-                resource_set,
-            }) = &mut this.state
-            {
-                'inner: loop {
-                    // Loop over all the source order combinations...
-                    if let Some(fut) = resource_set {
-                        // We have a pending Future to produce Option<Vec<FluentResource>>. Poll it...
-                        let set = ready!(fut.poll_unpin(cx));
-                        let _ = resource_set.take(); // A result is ready, clear the future.
-                        return Some(set).into();
-                    }
+        None.into()
+        // loop {
+        //     // Do we have state from last time?
+        //     if let Some(State {
+        //         lang_id,
+        //         source_orders,
+        //         resource_set,
+        //     }) = &mut this.state
+        //     {
+        //         'inner: loop {
+        //             // Loop over all the source order combinations...
+        //             if let Some(fut) = resource_set {
+        //                 // We have a pending Future to produce Option<Vec<FluentResource>>. Poll it...
+        //                 let set = ready!(fut.poll_unpin(cx));
+        //                 let _ = resource_set.take(); // A result is ready, clear the future.
+        //                 return Some(set).into();
+        //             }
 
-                    // No pending Future, create the next one...
-                    if let Some(source_order) = source_orders.next() {
-                        resource_set.replace(this.reg.lock().generate_resource_set(
-                            lang_id,
-                            &source_order,
-                            &this.resource_ids,
-                        ));
-                    } else {
-                        break 'inner;
-                    }
-                }
-            }
+        //             // No pending Future, create the next one...
+        //             if let Some(source_order) = source_orders.next() {
+        //                 resource_set.replace(this.reg.lock().generate_resource_set(
+        //                     lang_id,
+        //                     &source_order,
+        //                     &this.resource_ids,
+        //                 ));
+        //             } else {
+        //                 break 'inner;
+        //             }
+        //         }
+        //     }
 
-            // Move to the next LanguageIdentifier and reset the source permutation...
-            if let Some(lang_id) = this.lang_ids.next() {
-                let source_orders =
-                    super::permute_iter(this.reg.lock().len(), this.resource_ids.len());
-                this.state = Some(State {
-                    lang_id,
-                    source_orders,
-                    resource_set: None,
-                })
-            } else {
-                // No lang_id remaining. All done!
-                return None.into();
-            }
-        }
+        //     // Move to the next LanguageIdentifier and reset the source permutation...
+        //     if let Some(lang_id) = this.lang_ids.next() {
+        //         let source_orders =
+        //             super::permute_iter(this.reg.lock().len(), this.resource_ids.len());
+        //         this.state = Some(State {
+        //             lang_id,
+        //             source_orders,
+        //             resource_set: None,
+        //         })
+        //     } else {
+        //         // No lang_id remaining. All done!
+        //         return None.into();
+        //     }
+        // }
     }
 }

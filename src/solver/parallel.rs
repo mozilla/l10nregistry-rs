@@ -35,13 +35,45 @@ impl ParallelProblemSolver {
         }
     }
 
-    fn test_complete_solution(&mut self) -> ResourceSetStream {
-        let set = self.reg.lock().generate_resource_set(
-            &self.langid,
-            &self.solution.candidate,
-            &self.keys,
-        );
-        set
+    async fn test_candidate(&mut self) -> Option<usize> {
+        // println!("test_candidate: {:?}", self.solution.candidate);
+        // for res_idx in 0..self.solution.width {
+        //     let source_idx = self.solution.candidate[res_idx];
+        //     if let Some(cell) = &self.solution.get_cell(res_idx, source_idx) {
+        //         if cell.is_none() {
+        //             return Some(res_idx);
+        //         }
+        //     } else {
+        //         missing_idx.push(res_idx);
+        //         request.push((&self.keys[res_idx], source_idx));
+        //     }
+        // }
+        //
+        // XXX: Make it a Result
+        let request = self.solution.candidate.iter().enumerate();
+        // .map(|(res_idx, source_idx)| {
+        //     (res_idx, source_idx)
+        // });
+
+        // println!("test_complete_solution {:?}, {:?}", missing_resources, missing_sources);
+        let set = self
+            .reg
+            .lock()
+            .generate_resource_set(&self.langid, &self.keys, request)
+            .await;
+        // println!("test_complete_solution result {:?}", set);
+
+        let mut first_fail = None;
+        for (idx, res) in set.into_iter().enumerate() {
+            let res_idx = missing_idx[idx];
+
+            if first_fail.is_none() && res.is_none() {
+                first_fail = Some(res_idx);
+            }
+            let source_idx = self.solution.candidate[res_idx];
+            self.solution.cache[res_idx][source_idx] = Some(res);
+        }
+        first_fail
     }
 
     pub async fn next(&mut self) -> Option<&Vec<usize>> {
@@ -51,18 +83,13 @@ impl ParallelProblemSolver {
             }
             self.solution.dirty = false;
         }
-        while self.solution.advance_to_completion() {
-            let mut first_fail = None;
-            for (idx, res) in self.test_complete_solution().await.iter().enumerate() {
-                let source_idx = self.solution.candidate[idx];
-                if first_fail.is_none() && res.is_none() {
-                    first_fail = Some(idx);
-                }
-                self.cache[idx][source_idx] = Some(res.clone());
-            }
-            if let Some(idx) = first_fail {
+        while self.solution.try_generate_complete_candidate() {
+            if let Some(idx) = self.test_candidate().await {
+                // println!("First error: {}", idx);
                 self.solution.idx = idx;
-                self.solution.prune();
+                if !self.solution.prune() {
+                    return None;
+                }
                 if !self.solution.bail() {
                     return None;
                 }
@@ -89,7 +116,8 @@ impl Stream for ParallelProblemSolver {
     ) -> std::task::Poll<Option<Self::Item>> {
         // 'outer: loop {
         //     if let Some(stream) = &mut self.current_stream {
-        //         match ready!(stream.poll_unpin(cx)) {
+        //         let set = ready!(stream.poll_unpin(cx));
+
         //             Ok(set) => {
         //                 self.current_stream = None;
         //                 let mut bundle = FluentBundle::new(&[self.langid.clone()]);
