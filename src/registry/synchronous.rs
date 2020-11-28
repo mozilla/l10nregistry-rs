@@ -73,20 +73,13 @@ impl Iterator for GenerateBundlesSync {
                     self.iter = None;
                     continue;
                 }
+            } else if let Some(lang) = self.lang_ids.next() {
+                let iter =
+                    SerialProblemSolver::new(self.resource_ids.clone(), lang, self.reg.clone());
+                self.iter = Some(iter);
+                continue;
             } else {
-                if let Some(lang) = self.lang_ids.next() {
-                    let mut iter =
-                        SerialProblemSolver::new(self.resource_ids.clone(), lang, self.reg.clone());
-                    let result = iter.next_bundle();
-                    if let Some(bundle) = result {
-                        self.iter = Some(iter);
-                        return Some(bundle);
-                    } else {
-                        continue;
-                    }
-                } else {
-                    return None;
-                }
+                return None;
             }
         }
     }

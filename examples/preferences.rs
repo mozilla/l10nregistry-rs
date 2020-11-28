@@ -1,3 +1,4 @@
+use futures::stream::StreamExt;
 use l10nregistry::registry::L10nRegistry;
 
 const RES_IDS: &[&str] = &[
@@ -23,11 +24,10 @@ const RES_IDS: &[&str] = &[
     "security/certificates/certManager.ftl",
 ];
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let locales = vec!["en-US".parse().unwrap()];
     let mut reg = L10nRegistry::default();
-
-    reg.set_lang_ids(locales.clone());
 
     let browser_fs = l10nregistry::tokio::file_source(
         "browser".to_string(),
@@ -43,7 +43,7 @@ fn main() {
     reg.register_sources(vec![toolkit_fs, browser_fs]).unwrap();
 
     let paths = RES_IDS.iter().map(|&r| r.into()).collect();
-    let mut i = reg.generate_bundles_sync(locales, paths);
+    let mut i = reg.generate_bundles(locales, paths);
 
-    assert!(i.next().is_some());
+    assert!(i.next().await.is_some());
 }

@@ -7,9 +7,8 @@ pub use parallel::ParallelProblemSolver;
 pub use serial::SerialProblemSolver;
 pub use solution::Solution;
 
-use crate::fluent::{FluentBundle, FluentResource};
+use crate::fluent::FluentBundle;
 use crate::registry::L10nRegistry;
-use std::rc::Rc;
 use unic_langid::LanguageIdentifier;
 
 pub struct ProblemSolver {
@@ -42,5 +41,16 @@ impl ProblemSolver {
             keys,
             reg,
         }
+    }
+
+    fn get_bundle(&self) -> FluentBundle {
+        let mut bundle = FluentBundle::new(&[self.langid.clone()]);
+        for (res_idx, source_idx) in self.solution.candidate.iter().enumerate() {
+            let cell = &self.solution.cache[res_idx][*source_idx];
+            bundle
+                .add_resource(cell.as_ref().unwrap().as_ref().unwrap().clone())
+                .unwrap()
+        }
+        bundle
     }
 }

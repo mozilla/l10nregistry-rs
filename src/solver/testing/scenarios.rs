@@ -13,6 +13,16 @@ pub fn get_scenarios() -> Vec<Scenario> {
             Some(vec![vec![0], vec![1]]),
         ),
         Scenario::new(
+            "two-res-two-sources",
+            vec!["browser/browser/brand.ftl", "toolkit/toolkit/menu.ftl"],
+            vec![
+                ("browser", vec!["en-US"], "browser"),
+                ("toolkit", vec!["en-US"], "toolkit"),
+            ],
+            vec!["toolkit/menu.ftl", "browser/brand.ftl"],
+            Some(vec![vec![1, 0]]),
+        ),
+        Scenario::new(
             "small",
             vec![
                 "browser/branding/brand.ftl",

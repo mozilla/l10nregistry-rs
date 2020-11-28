@@ -3,36 +3,20 @@ mod synchronous;
 
 use std::{
     cell::{Ref, RefCell},
-    iter::Rev,
-    ops::Range,
     rc::Rc,
 };
 
 use crate::source::FileSource;
 
 use chunky_vec::ChunkyVec;
-use fluent_bundle::{FluentBundle, FluentResource};
+use fluent_bundle::FluentResource;
 use fluent_fallback::{BundleGenerator, BundleGeneratorSync};
-use futures::Stream;
-use itertools::Itertools;
 use unic_langid::LanguageIdentifier;
 
-pub use asynchronous::{GenerateBundles, GenerateVec};
+pub use asynchronous::GenerateBundles;
 pub use synchronous::GenerateBundlesSync;
 
 pub type FluentResourceSet = Vec<Rc<FluentResource>>;
-
-/// Generate a permutation of all registered source file indices for `length`
-/// in reverse order. ie. The last source added to the registry with `add_source`
-/// is returned first.
-pub(crate) fn permute_iter(
-    source_count: usize,
-    length: usize,
-) -> itertools::MultiProduct<Rev<Range<usize>>> {
-    (0..length)
-        .map(|_| (0..source_count).rev())
-        .multi_cartesian_product()
-}
 
 #[derive(Default)]
 pub struct Shared {
@@ -45,26 +29,21 @@ pub struct L10nRegistryLocked<'a> {
 }
 
 impl<'a> L10nRegistryLocked<'a> {
+    /* ? */
     pub fn iter(&self) -> impl Iterator<Item = &FileSource> {
         self.lock.iter()
-    }
-
-    pub fn len(&self) -> usize {
-        self.lock.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
     }
 
     pub fn source_idx(&self, index: usize) -> &FileSource {
         self.lock.get(index).expect("Index out-of-range")
     }
 
+    /* Used by tests */
     pub fn get_source(&self, name: &str) -> Option<&FileSource> {
         self.lock.iter().find(|&source| source.name == name)
     }
 
+    /* Used by tests */
     pub fn generate_sources_for_file<'l>(
         &'l self,
         langid: &'l LanguageIdentifier,
@@ -144,84 +123,5 @@ mod tests {
         );
 
         reg.register_sources(vec![fs1, fs2]).unwrap();
-    }
-
-    // #[test]
-    // fn permutations() {
-    //     let mut reg = L10nRegistry::default();
-    //     test_setup_registry(&mut reg);
-
-    //     let mut iter = permute_iter(reg.lock().len(), 2);
-    //     assert_eq!(iter.next(), Some(vec![1, 1]));
-    //     assert_eq!(iter.next(), Some(vec![1, 0]));
-    //     assert_eq!(iter.next(), Some(vec![0, 1]));
-    //     assert_eq!(iter.next(), Some(vec![0, 0]));
-    //     assert_eq!(iter.next(), None);
-    // }
-
-    // #[test]
-    // fn generate_resource_set_sync() {
-    //     let mut reg = L10nRegistry::default();
-    //     test_setup_registry(&mut reg);
-
-    //     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-    //     let resource_ids = ["browser/brand.ftl", "toolkit/menu.ftl"];
-    //     for (i, order) in permute_iter(reg.lock().len(), resource_ids.len()).enumerate() {
-    //         let set = reg
-    //             .lock()
-    //             .generate_resource_set_sync(&en_us, &order, &resource_ids);
-    //         if i == 1 {
-    //             assert!(set.is_some());
-    //             let set = set.unwrap();
-    //             assert_eq!(set.len(), 2);
-    //         } else {
-    //             assert!(set.is_none());
-    //         }
-    //     }
-    // }
-
-    // #[tokio::test]
-    // async fn generate_resource_set_async() {
-    //     let mut reg = L10nRegistry::default();
-    //     test_setup_registry(&mut reg);
-
-    //     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-    //     let resource_ids = ["browser/brand.ftl", "toolkit/menu.ftl"];
-    //     for (i, order) in permute_iter(reg.lock().len(), resource_ids.len()).enumerate() {
-    //         let set = reg
-    //             .lock()
-    //             .generate_resource_set(&en_us, &order, &resource_ids)
-    //             .await;
-    //         if i == 1 {
-    //             assert!(set.is_some());
-    //             let set = set.unwrap();
-    //             assert_eq!(set.len(), 2);
-    //         } else {
-    //             assert!(set.is_none());
-    //         }
-    //     }
-    // }
-
-    #[tokio::test]
-    async fn generate_vec() {
-        let mut reg = L10nRegistry::default();
-        test_setup_registry(&mut reg);
-
-        let en_us: Vec<LanguageIdentifier> = vec!["en-US".parse().unwrap()];
-        let resource_ids = vec![
-            "browser/brand.ftl".to_string(),
-            "toolkit/menu.ftl".to_string(),
-        ];
-        let mut gen = GenerateVec::new(reg, en_us, resource_ids);
-        let xx = gen.next().await.unwrap();
-        assert!(!xx.iter().all(Option::is_some));
-        let xx = gen.next().await.unwrap();
-        assert!(xx.iter().all(Option::is_some));
-        let xx = gen.next().await.unwrap();
-        assert!(!xx.iter().all(Option::is_some));
-        let xx = gen.next().await.unwrap();
-        assert!(!xx.iter().all(Option::is_some));
-        let xx = gen.next().await;
-        assert!(xx.is_none());
     }
 }

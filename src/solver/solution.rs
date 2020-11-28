@@ -1,5 +1,4 @@
-use crate::fluent::{FluentBundle, FluentResource};
-use crate::registry::L10nRegistry;
+use crate::fluent::FluentResource;
 use std::rc::Rc;
 
 #[derive(Debug)]
@@ -23,12 +22,10 @@ impl Solution {
     }
 
     fn is_cell_missing(&self, res_idx: usize, source_idx: usize) -> bool {
-        // println!("is_cell_missing: {}, {}", res_idx, source_idx);
-        // println!("{:#?}", self.cache);
         if let Some(None) = self.cache[res_idx][source_idx] {
             return true;
         }
-        return false;
+        false
     }
 
     fn is_current_cell_missing(&self) -> bool {
@@ -38,7 +35,7 @@ impl Solution {
         if let Some(None) = cell {
             return true;
         }
-        return false;
+        false
     }
 
     pub fn try_advance_source(&mut self) -> bool {
@@ -52,16 +49,17 @@ impl Solution {
     }
 
     pub fn try_advance_resource(&mut self) -> bool {
-        while self.idx < self.width - 1 {
+        if self.idx >= self.width - 1 {
+            false
+        } else {
             self.idx += 1;
             while self.is_current_cell_missing() {
                 if !self.try_advance_source() {
                     return false;
                 }
             }
-            return true;
+            true
         }
-        false
     }
 
     pub fn try_backtrack(&mut self) -> bool {

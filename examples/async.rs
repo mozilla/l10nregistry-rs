@@ -5,7 +5,10 @@ use l10nregistry::solver::ParallelProblemSolver;
 async fn main() {
     let scenarios = get_scenarios();
 
-    let scenario = scenarios.iter().find(|s| s.name == "incomplete").unwrap();
+    let scenario = scenarios
+        .iter()
+        .find(|s| s.name == "two-res-two-sources")
+        .unwrap();
 
     let reg = scenario.get_l10nregistry();
 

@@ -1,16 +1,23 @@
 use super::ProblemSolver;
-use crate::fluent::FluentBundle;
-use crate::registry::asynchronous::ResourceSetStream;
 use crate::registry::L10nRegistry;
-use futures::ready;
-use futures::FutureExt;
-use futures::Stream;
 use std::ops::{Deref, DerefMut};
 use unic_langid::LanguageIdentifier;
 
+use crate::{
+    fluent::FluentBundle,
+    source::{RcResourceOption, ResourceStatus},
+};
+use futures::{
+    ready,
+    stream::{Collect, FuturesOrdered},
+    FutureExt, Stream, StreamExt,
+};
+
+pub type ResourceSetStream = Collect<FuturesOrdered<ResourceStatus>, Vec<RcResourceOption>>;
+
 pub struct ParallelProblemSolver {
     solver: ProblemSolver,
-    current_stream: Option<ResourceSetStream>,
+    current_stream: Option<(ResourceSetStream, Vec<usize>)>,
 }
 
 impl Deref for ParallelProblemSolver {
@@ -35,45 +42,55 @@ impl ParallelProblemSolver {
         }
     }
 
-    async fn test_candidate(&mut self) -> Option<usize> {
-        // println!("test_candidate: {:?}", self.solution.candidate);
-        // for res_idx in 0..self.solution.width {
-        //     let source_idx = self.solution.candidate[res_idx];
-        //     if let Some(cell) = &self.solution.get_cell(res_idx, source_idx) {
-        //         if cell.is_none() {
-        //             return Some(res_idx);
-        //         }
-        //     } else {
-        //         missing_idx.push(res_idx);
-        //         request.push((&self.keys[res_idx], source_idx));
-        //     }
-        // }
-        //
-        // XXX: Make it a Result
-        let request = self.solution.candidate.iter().enumerate();
-        // .map(|(res_idx, source_idx)| {
-        //     (res_idx, source_idx)
-        // });
-
-        // println!("test_complete_solution {:?}, {:?}", missing_resources, missing_sources);
-        let set = self
-            .reg
-            .lock()
-            .generate_resource_set(&self.langid, &self.keys, request)
-            .await;
-        // println!("test_complete_solution result {:?}", set);
-
-        let mut first_fail = None;
-        for (idx, res) in set.into_iter().enumerate() {
-            let res_idx = missing_idx[idx];
-
-            if first_fail.is_none() && res.is_none() {
-                first_fail = Some(res_idx);
-            }
-            let source_idx = self.solution.candidate[res_idx];
-            self.solution.cache[res_idx][source_idx] = Some(res);
+    fn try_generate_test_stream(&mut self) -> Result<(ResourceSetStream, Vec<usize>), usize> {
+        let mut testing_cells = vec![];
+        let stream = {
+            let lock = self.reg.lock();
+            self.solution
+                .candidate
+                .iter()
+                .enumerate()
+                .filter_map(|(res_idx, &source_idx)| {
+                    match self.solution.cache[res_idx][source_idx] {
+                        None => {
+                            let source = lock.source_idx(source_idx);
+                            let path = self.keys[res_idx].as_str();
+                            let langid = &self.langid;
+                            testing_cells.push(res_idx);
+                            Some(Ok(source.fetch_file(langid, path)))
+                        }
+                        Some(None) => Some(Err(res_idx)),
+                        _ => None,
+                    }
+                })
+                .collect::<Result<FuturesOrdered<_>, usize>>()
+        };
+        match stream {
+            Ok(stream) => Ok((stream.collect(), testing_cells)),
+            Err(idx) => Err(idx),
         }
-        first_fail
+    }
+
+    async fn test_candidate(&mut self) -> Result<(), usize> {
+        let (stream, testing_cells) = self.try_generate_test_stream()?;
+        self.apply_test_result(stream.await, &testing_cells)
+    }
+
+    fn apply_test_result(
+        &mut self,
+        resources: Vec<RcResourceOption>,
+        testing_cells: &[usize],
+    ) -> Result<(), usize> {
+        for (missing_idx, res) in resources.iter().enumerate() {
+            let res_idx = testing_cells[missing_idx];
+            if let Some(res) = res {
+                let source_idx = self.solution.candidate[res_idx];
+                self.solution.cache[res_idx][source_idx] = Some(Some(res.clone()));
+            } else {
+                return Err(res_idx);
+            }
+        }
+        Ok(())
     }
 
     pub async fn next(&mut self) -> Option<&Vec<usize>> {
@@ -84,8 +101,7 @@ impl ParallelProblemSolver {
             self.solution.dirty = false;
         }
         while self.solution.try_generate_complete_candidate() {
-            if let Some(idx) = self.test_candidate().await {
-                // println!("First error: {}", idx);
+            if let Err(idx) = self.test_candidate().await {
                 self.solution.idx = idx;
                 if !self.solution.prune() {
                     return None;
@@ -101,10 +117,6 @@ impl ParallelProblemSolver {
         }
         None
     }
-
-    pub async fn next_bundle(&mut self) -> Option<FluentBundle> {
-        panic!()
-    }
 }
 
 impl Stream for ParallelProblemSolver {
@@ -114,43 +126,50 @@ impl Stream for ParallelProblemSolver {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        // 'outer: loop {
-        //     if let Some(stream) = &mut self.current_stream {
-        //         let set = ready!(stream.poll_unpin(cx));
+        'outer: loop {
+            if let Some((stream, testing_cells)) = &mut self.current_stream {
+                let set = ready!(stream.poll_unpin(cx));
+                let testing_cells = testing_cells.clone();
 
-        //             Ok(set) => {
-        //                 self.current_stream = None;
-        //                 let mut bundle = FluentBundle::new(&[self.langid.clone()]);
-        //                 for res in set {
-        //                     bundle.add_resource(res).unwrap()
-        //                 }
-        //                 self.solution.dirty = true;
-        //                 return Some(bundle).into();
-        //             }
-        //             Err(idx) => {
-        //                 self.solution.idx = idx;
-        //                 self.solution.prune();
-        //                 if !self.solution.bail() {
-        //                     return None.into();
-        //                 }
-        //                 self.current_stream = None;
-        //                 continue 'outer;
-        //             }
-        //         }
-        //     } else {
-        //         if self.solution.dirty {
-        //             if !self.solution.bail() {
-        //                 return None.into();
-        //             }
-        //             self.solution.dirty = false;
-        //         }
-        //         while self.solution.advance_to_completion() {
-        //             self.current_stream = Some(self.test_complete_solution());
-        //             continue 'outer;
-        //         }
-        //     }
-        // }
-        None.into()
+                if let Err(idx) = self.apply_test_result(set, &testing_cells) {
+                    self.solution.idx = idx;
+                    self.solution.prune();
+                    if !self.solution.bail() {
+                        return None.into();
+                    }
+                    self.current_stream = None;
+                    continue 'outer;
+                } else {
+                    let bundle = self.get_bundle();
+                    self.current_stream = None;
+                    self.solution.dirty = true;
+                    return Some(bundle).into();
+                }
+            } else {
+                if self.solution.dirty {
+                    if !self.solution.bail() {
+                        return None.into();
+                    }
+                    self.solution.dirty = false;
+                }
+                while self.solution.try_generate_complete_candidate() {
+                    match self.try_generate_test_stream() {
+                        Ok((stream, testing_cells)) => {
+                            self.current_stream = Some((stream, testing_cells));
+                            continue 'outer;
+                        }
+                        Err(idx) => {
+                            self.solution.idx = idx;
+                            self.solution.prune();
+                            if !self.solution.bail() {
+                                return None.into();
+                            }
+                        }
+                    }
+                }
+                return None.into();
+            }
+        }
     }
 }
 
