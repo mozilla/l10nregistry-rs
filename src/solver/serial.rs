@@ -24,15 +24,6 @@ impl DerefMut for SerialProblemSolver {
 
 impl SerialProblemSolver {
     pub fn new(keys: Vec<String>, langid: LanguageIdentifier, reg: L10nRegistry) -> Self {
-        println!(
-            "SerialProblemSolver: keys: {:?}, langid: {:?}, sources: {:?}",
-            keys,
-            langid,
-            reg.lock()
-                .iter()
-                .map(|s| s.name.clone())
-                .collect::<Vec<String>>()
-        );
         Self {
             solver: ProblemSolver::new(keys, langid, reg),
         }
