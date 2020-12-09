@@ -54,6 +54,10 @@ impl SerialProblemSolver {
 
     #[inline]
     pub fn next(&mut self) -> Option<&Vec<usize>> {
+        if self.solution.depth == 0 {
+            return None;
+        }
+
         if self.solution.dirty {
             if !self.solution.bail() {
                 return None;
@@ -79,6 +83,10 @@ impl SerialProblemSolver {
 
     #[inline]
     pub fn next_bundle(&mut self) -> Option<FluentBundle> {
+        if self.solution.depth == 0 {
+            return None;
+        }
+
         if self.solution.dirty {
             if !self.solution.bail() {
                 return None;

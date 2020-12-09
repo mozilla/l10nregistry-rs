@@ -94,6 +94,10 @@ impl ParallelProblemSolver {
     }
 
     pub async fn next(&mut self) -> Option<&Vec<usize>> {
+        if self.solution.depth == 0 {
+            return None;
+        }
+
         if self.solution.dirty {
             if !self.solution.bail() {
                 return None;
@@ -126,6 +130,10 @@ impl Stream for ParallelProblemSolver {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
+        if self.solution.depth == 0 {
+            return None.into();
+        }
+
         'outer: loop {
             if let Some((stream, testing_cells)) = &mut self.current_stream {
                 let set = ready!(stream.poll_unpin(cx));

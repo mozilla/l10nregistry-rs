@@ -3,6 +3,21 @@ use super::Scenario;
 pub fn get_scenarios() -> Vec<Scenario> {
     vec![
         Scenario::new(
+            "no-sources",
+            vec!["browser/browser/main.ftl", "toolkit/browser/main.ftl"],
+            vec![],
+            vec!["browser/main.ftl"],
+            Some(vec![]),
+        ),
+        Scenario::new(
+            "no-resources",
+            vec![],
+            vec![],
+            vec!["browser/main.ftl"],
+            Some(vec![]),
+        ),
+        Scenario::new("no-keys", vec![], vec![], vec![], Some(vec![])),
+        Scenario::new(
             "one-res-two-sources",
             vec!["browser/browser/main.ftl", "toolkit/browser/main.ftl"],
             vec![

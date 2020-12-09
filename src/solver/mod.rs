@@ -23,9 +23,6 @@ impl ProblemSolver {
     pub fn new(keys: Vec<String>, langid: LanguageIdentifier, reg: L10nRegistry) -> Self {
         let width = keys.len();
         let depth = reg.shared.sources.borrow().len();
-        debug_assert!(width > 0);
-        debug_assert!(depth > 0);
-
         Self {
             solution: Solution {
                 width,
