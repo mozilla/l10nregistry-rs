@@ -16,7 +16,16 @@ pub fn get_scenarios() -> Vec<Scenario> {
             vec!["browser/main.ftl"],
             Some(vec![]),
         ),
-        Scenario::new("no-keys", vec![], vec![], vec![], Some(vec![])),
+        Scenario::new(
+            "no-keys",
+            vec![],
+            vec![
+                ("browser", vec!["en-US"], "browser"),
+                ("toolkit", vec!["en-US"], "toolkit"),
+            ],
+            vec![],
+            Some(vec![]),
+        ),
         Scenario::new(
             "one-res-two-sources",
             vec!["browser/browser/main.ftl", "toolkit/browser/main.ftl"],

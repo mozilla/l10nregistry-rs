@@ -24,6 +24,15 @@ impl DerefMut for SerialProblemSolver {
 
 impl SerialProblemSolver {
     pub fn new(keys: Vec<String>, langid: LanguageIdentifier, reg: L10nRegistry) -> Self {
+        println!(
+            "SerialProblemSolver: keys: {:?}, langid: {:?}, sources: {:?}",
+            keys,
+            langid,
+            reg.lock()
+                .iter()
+                .map(|s| s.name.clone())
+                .collect::<Vec<String>>()
+        );
         Self {
             solver: ProblemSolver::new(keys, langid, reg),
         }
@@ -54,7 +63,7 @@ impl SerialProblemSolver {
 
     #[inline]
     pub fn next(&mut self) -> Option<&Vec<usize>> {
-        if self.solution.depth == 0 {
+        if self.solution.depth == 0 || self.solution.width == 0 {
             return None;
         }
 
@@ -83,7 +92,7 @@ impl SerialProblemSolver {
 
     #[inline]
     pub fn next_bundle(&mut self) -> Option<FluentBundle> {
-        if self.solution.depth == 0 {
+        if self.solution.depth == 0 || self.solution.width == 0 {
             return None;
         }
 

@@ -94,7 +94,7 @@ impl ParallelProblemSolver {
     }
 
     pub async fn next(&mut self) -> Option<&Vec<usize>> {
-        if self.solution.depth == 0 {
+        if self.solution.depth == 0 || self.solution.width == 0 {
             return None;
         }
 
@@ -130,7 +130,7 @@ impl Stream for ParallelProblemSolver {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        if self.solution.depth == 0 {
+        if self.solution.depth == 0 || self.solution.width == 0 {
             return None.into();
         }
 
