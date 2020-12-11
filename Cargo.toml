@@ -9,7 +9,7 @@ edition = "2018"
 async-trait = "0.1"
 chunky-vec = "0.1"
 fluent-bundle = "0.13"
-fluent-fallback = { path = "/home/mozilla/projects/fluent-rs/fluent-fallback" }
+fluent-fallback = { git = "https://github.com/projectfluent/fluent-rs" }
 futures = "0.3"
 log = "0.4"
 pin-project = "1.0"

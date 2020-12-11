@@ -31,7 +31,7 @@ impl L10nRegistry {
 }
 
 pub struct GenerateBundles {
-    iter: Option<ParallelProblemSolver>,
+    solver: Option<ParallelProblemSolver>,
     resource_ids: Vec<String>,
     reg: L10nRegistry,
     lang_ids: <Vec<LanguageIdentifier> as IntoIterator>::IntoIter,
@@ -47,7 +47,7 @@ impl GenerateBundles {
             lang_ids: lang_ids.into_iter(),
             resource_ids,
             reg,
-            iter: None,
+            solver: None,
         }
     }
 }
@@ -57,18 +57,18 @@ impl Stream for GenerateBundles {
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         loop {
-            if let Some(iter) = &mut self.iter {
-                let iter = Pin::new(iter);
-                if let Some(bundle) = ready!(iter.poll_next(cx)) {
+            if let Some(solver) = &mut self.solver {
+                let solver = Pin::new(solver);
+                if let Some(bundle) = ready!(solver.poll_next(cx)) {
                     return Some(bundle).into();
                 } else {
-                    self.iter = None;
+                    self.solver = None;
                     continue;
                 }
             } else if let Some(lang) = self.lang_ids.next() {
-                let iter =
+                let solver =
                     ParallelProblemSolver::new(self.resource_ids.clone(), lang, self.reg.clone());
-                self.iter = Some(iter);
+                self.solver = Some(solver);
             } else {
                 return None.into();
             }

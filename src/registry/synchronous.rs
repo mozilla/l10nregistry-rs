@@ -40,7 +40,7 @@ impl L10nRegistry {
 use crate::solver::SerialProblemSolver;
 
 pub struct GenerateBundlesSync {
-    iter: Option<SerialProblemSolver>,
+    solver: Option<SerialProblemSolver>,
     resource_ids: Vec<String>,
     reg: L10nRegistry,
     lang_ids: <Vec<LanguageIdentifier> as IntoIterator>::IntoIter,
@@ -56,7 +56,7 @@ impl GenerateBundlesSync {
             lang_ids: lang_ids.into_iter(),
             resource_ids,
             reg,
-            iter: None,
+            solver: None,
         }
     }
 }
@@ -66,17 +66,17 @@ impl Iterator for GenerateBundlesSync {
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if let Some(iter) = &mut self.iter {
-                if let Some(bundle) = iter.next_bundle() {
+            if let Some(solver) = &mut self.solver {
+                if let Some(bundle) = solver.next_bundle() {
                     return Some(bundle);
                 } else {
-                    self.iter = None;
+                    self.solver = None;
                     continue;
                 }
             } else if let Some(lang) = self.lang_ids.next() {
-                let iter =
+                let solver =
                     SerialProblemSolver::new(self.resource_ids.clone(), lang, self.reg.clone());
-                self.iter = Some(iter);
+                self.solver = Some(solver);
                 continue;
             } else {
                 return None;
