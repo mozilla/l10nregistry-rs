@@ -4,7 +4,7 @@ use criterion::Criterion;
 
 use l10nregistry::registry::L10nRegistry;
 
-const res_ids: &[&str] = &[
+const RES_IDS: &[&str] = &[
     "branding/brand.ftl",
     "browser/branding/brandings.ftl",
     "browser/branding/sync-brand.ftl",
@@ -48,7 +48,7 @@ fn preferences_bench(c: &mut Criterion) {
 
             reg.register_sources(vec![toolkit_fs, browser_fs]).unwrap();
 
-            let paths = res_ids.iter().map(|&r| r.into()).collect();
+            let paths = RES_IDS.iter().map(|&r| r.into()).collect();
             let mut i = reg.generate_bundles_for_lang_sync(locales[0].clone(), paths);
 
             assert!(i.next().is_some());

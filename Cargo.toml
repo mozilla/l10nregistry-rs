@@ -9,9 +9,8 @@ edition = "2018"
 async-trait = "0.1"
 chunky-vec = "0.1"
 fluent-bundle = "0.13"
-fluent-fallback = { git = "https://github.com/projectfluent/fluent-rs" }
+fluent-fallback = { path = "/home/mozilla/projects/fluent-rs/fluent-fallback" }
 futures = "0.3"
-itertools = "0.9"
 log = "0.4"
 pin-project = "1.0"
 unic-langid = "0.9"
@@ -25,6 +24,14 @@ criterion = "0.3"
 [features]
 default = []
 tokio-io = ["tokio"]
+
+[[example]]
+name = "async"
+required-features = ["tokio"]
+
+[[example]]
+name = "preferences"
+required-features = ["tokio"]
 
 [[bench]]
 name = "preferences"

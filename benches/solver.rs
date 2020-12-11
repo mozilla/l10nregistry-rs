@@ -3,7 +3,7 @@ use criterion::criterion_main;
 use criterion::Criterion;
 
 use l10nregistry::solver::testing::get_scenarios;
-use l10nregistry::solver::{ParallelProblemSolver, SerialProblemSolver};
+use l10nregistry::solver::SerialProblemSolver;
 use unic_langid::LanguageIdentifier;
 
 fn sync_bench(c: &mut Criterion) {
@@ -25,18 +25,22 @@ fn sync_bench(c: &mut Criterion) {
             })
         });
 
-        let reg = scenario.get_l10nregistry();
-        let langid: LanguageIdentifier = "en-US".parse().unwrap();
+        #[cfg(feature = "tokio")]
+        {
+            use l10nregistry::solver::ParallelProblemSolver;
+            let reg = scenario.get_l10nregistry();
+            let langid: LanguageIdentifier = "en-US".parse().unwrap();
 
-        let mut rt = tokio::runtime::Runtime::new().unwrap();
+            let rt = tokio::runtime::Runtime::new().unwrap();
 
-        group.bench_function(&format!("parallel/{}", scenario.name), move |b| {
-            b.iter(|| {
-                let mut gen =
-                    ParallelProblemSolver::new(res_ids.clone(), langid.clone(), reg.clone());
-                rt.block_on(async { while let Some(_) = gen.next().await {} });
-            })
-        });
+            group.bench_function(&format!("parallel/{}", scenario.name), move |b| {
+                b.iter(|| {
+                    let mut gen =
+                        ParallelProblemSolver::new(res_ids.clone(), langid.clone(), reg.clone());
+                    rt.block_on(async { while let Some(_) = gen.next().await {} });
+                })
+            });
+        }
 
         group.finish();
     }

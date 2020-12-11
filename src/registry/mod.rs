@@ -1,4 +1,4 @@
-pub mod asynchronous;
+mod asynchronous;
 mod synchronous;
 
 use std::{
@@ -100,28 +100,5 @@ impl BundleGeneratorSync for L10nRegistry {
 
     fn bundles_sync(&self, resource_ids: Vec<String>) -> Self::Iter {
         self.generate_bundles_sync(self.shared.lang_ids.clone(), resource_ids)
-    }
-}
-
-#[cfg(test)]
-#[cfg(feature = "tokio")]
-mod tests {
-    use super::*;
-    use futures::StreamExt;
-
-    fn test_setup_registry(reg: &mut L10nRegistry) {
-        let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let fs1 = crate::tokio::file_source(
-            "toolkit".to_string(),
-            vec![en_us.clone()],
-            "./tests/resources/toolkit/{locale}/".into(),
-        );
-        let fs2 = crate::tokio::file_source(
-            "browser".to_string(),
-            vec![en_us.clone()],
-            "./tests/resources/browser/{locale}/".into(),
-        );
-
-        reg.register_sources(vec![fs1, fs2]).unwrap();
     }
 }

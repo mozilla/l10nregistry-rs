@@ -1,8 +1,7 @@
-use std::borrow::Cow;
-
 use fluent_fallback::{AsyncLocalization, L10nKey, SyncLocalization};
 use l10nregistry::registry::L10nRegistry;
 use serial_test::serial;
+use std::borrow::Cow;
 use unic_langid::{langid, LanguageIdentifier};
 
 static LOCALES: &[LanguageIdentifier] = &[langid!("pl"), langid!("en-US")];
@@ -77,92 +76,92 @@ mod tests {
         assert_eq!(value, "This message is only in English [browser][en-US]");
     }
 
-    // #[test]
-    // #[serial]
-    // fn localization_format_values_sync() {
-    //     let loc = setup_sync_test();
+    #[test]
+    #[serial]
+    fn localization_format_values_sync() {
+        let loc = setup_sync_test();
 
-    //     let keys = vec![
-    //         L10nKey {
-    //             id: "hello-world".to_string(),
-    //             args: None,
-    //         },
-    //         L10nKey {
-    //             id: "missing-message".to_string(),
-    //             args: None,
-    //         },
-    //         L10nKey {
-    //             id: "only-english".to_string(),
-    //             args: None,
-    //         },
-    //     ];
-    //     let values = loc.format_values_sync(&keys);
-    //     assert_eq!(values.len(), 3);
-    //     assert_eq!(values[0], Some(Cow::Borrowed("Hello World [browser][pl]")));
-    //     assert_eq!(values[1], None);
-    //     assert_eq!(
-    //         values[2],
-    //         Some(Cow::Borrowed(
-    //             "This message is only in English [browser][en-US]"
-    //         ))
-    //     );
-    // }
+        let keys = vec![
+            L10nKey {
+                id: "hello-world".to_string(),
+                args: None,
+            },
+            L10nKey {
+                id: "missing-message".to_string(),
+                args: None,
+            },
+            L10nKey {
+                id: "only-english".to_string(),
+                args: None,
+            },
+        ];
+        let values = loc.format_values_sync(&keys);
+        assert_eq!(values.len(), 3);
+        assert_eq!(values[0], Some(Cow::Borrowed("Hello World [browser][pl]")));
+        assert_eq!(values[1], None);
+        assert_eq!(
+            values[2],
+            Some(Cow::Borrowed(
+                "This message is only in English [browser][en-US]"
+            ))
+        );
+    }
 
-    // #[tokio::test]
-    // #[serial]
-    // async fn localization_format_value_async() {
-    //     let loc = setup_async_test();
+    #[tokio::test]
+    #[serial]
+    async fn localization_format_value_async() {
+        let loc = setup_async_test();
 
-    //     let value = loc.format_value("hello-world", None).await;
-    //     assert_eq!(value, "Hello World [browser][pl]");
+        let value = loc.format_value("hello-world", None).await;
+        assert_eq!(value, "Hello World [browser][pl]");
 
-    //     let value = loc.format_value("missing-message", None).await;
-    //     assert_eq!(value, "missing-message");
+        let value = loc.format_value("missing-message", None).await;
+        assert_eq!(value, "missing-message");
 
-    //     let value = loc.format_value("only-english", None).await;
-    //     assert_eq!(value, "This message is only in English [browser][en-US]");
-    // }
+        let value = loc.format_value("only-english", None).await;
+        assert_eq!(value, "This message is only in English [browser][en-US]");
+    }
 
-    // #[tokio::test]
-    // #[serial]
-    // async fn localization_format_values_async() {
-    //     let loc = setup_async_test();
+    #[tokio::test]
+    #[serial]
+    async fn localization_format_values_async() {
+        let loc = setup_async_test();
 
-    //     let keys = vec![
-    //         L10nKey {
-    //             id: "hello-world".to_string(),
-    //             args: None,
-    //         },
-    //         L10nKey {
-    //             id: "missing-message".to_string(),
-    //             args: None,
-    //         },
-    //         L10nKey {
-    //             id: "only-english".to_string(),
-    //             args: None,
-    //         },
-    //     ];
-    //     let values = loc.format_values(&keys).await;
-    //     assert_eq!(values.len(), 3);
-    //     assert_eq!(values[0], Some(Cow::Borrowed("Hello World [browser][pl]")));
-    //     assert_eq!(values[1], None);
-    //     assert_eq!(
-    //         values[2],
-    //         Some(Cow::Borrowed(
-    //             "This message is only in English [browser][en-US]"
-    //         ))
-    //     );
-    // }
+        let keys = vec![
+            L10nKey {
+                id: "hello-world".to_string(),
+                args: None,
+            },
+            L10nKey {
+                id: "missing-message".to_string(),
+                args: None,
+            },
+            L10nKey {
+                id: "only-english".to_string(),
+                args: None,
+            },
+        ];
+        let values = loc.format_values(&keys).await;
+        assert_eq!(values.len(), 3);
+        assert_eq!(values[0], Some(Cow::Borrowed("Hello World [browser][pl]")));
+        assert_eq!(values[1], None);
+        assert_eq!(
+            values[2],
+            Some(Cow::Borrowed(
+                "This message is only in English [browser][en-US]"
+            ))
+        );
+    }
 
-    // #[tokio::test]
-    // #[serial]
-    // async fn localization_upgrade() {
-    //     let loc = setup_sync_test();
-    //     let value = loc.format_value_sync("hello-world", None);
-    //     assert_eq!(value, "Hello World [browser][pl]");
+    #[tokio::test]
+    #[serial]
+    async fn localization_upgrade() {
+        let loc = setup_sync_test();
+        let value = loc.format_value_sync("hello-world", None);
+        assert_eq!(value, "Hello World [browser][pl]");
 
-    //     let loc = loc.upgrade();
-    //     let value = loc.format_value("hello-world", None).await;
-    //     assert_eq!(value, "Hello World [browser][pl]");
-    // }
+        let loc = loc.upgrade();
+        let value = loc.format_value("hello-world", None).await;
+        assert_eq!(value, "Hello World [browser][pl]");
+    }
 }

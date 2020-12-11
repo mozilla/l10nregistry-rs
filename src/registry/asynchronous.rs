@@ -4,20 +4,11 @@ use std::{
 };
 
 use super::L10nRegistry;
-use crate::{
-    fluent::FluentBundle,
-    source::{RcResourceOption, ResourceStatus},
-};
+use crate::fluent::FluentBundle;
 
 use crate::solver::ParallelProblemSolver;
-use futures::{
-    ready,
-    stream::{Collect, FuturesOrdered},
-    Stream,
-};
+use futures::{ready, Stream};
 use unic_langid::LanguageIdentifier;
-
-pub type ResourceSetStream = Collect<FuturesOrdered<ResourceStatus>, Vec<RcResourceOption>>;
 
 impl L10nRegistry {
     pub fn generate_bundles_for_lang(

@@ -183,12 +183,13 @@ impl Stream for ParallelProblemSolver {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::solver::testing::get_scenarios;
-    use unic_langid::LanguageIdentifier;
-
+    #[cfg(feature = "tokio")]
     #[tokio::test]
     async fn test_async() {
+        use super::*;
+        use crate::solver::testing::get_scenarios;
+        use unic_langid::LanguageIdentifier;
+
         let scenarios = get_scenarios();
 
         let langid: LanguageIdentifier = "en-US".parse().unwrap();
