@@ -4,7 +4,7 @@ Source Order Problem Solver
 
 This module contains an algorithm used to power the `FluentBundle` generator in `L10nRegistry`.
 
-The main concept behind it is a problem solver which takes a list of resources and a list of sources and computes all possible iterations of valid sets of orders of sources that allow for creation of `FluentBundle` with the requested resources.
+The main concept behind it is a problem solver which takes a list of resources and a list of sources and computes all possible iterations of valid combinations of source orders that allow for creation of `FluentBundle` with the requested resources.
 
 The algorithm is notoriously hard to read, write, and modify, which prompts this documentation to be extensive and provide an example with diagram presentations to aid the reader.
 
@@ -80,9 +80,20 @@ With those tools introduced, we can now guide the reader through how the algorit
 But before we do that, it is important to justify writing a custom algorithm in place of existing generic solutions, and explain the two testing strategies which heavily impact the algorithm.
 
 # Existing libraries
-The reader may notice that the concept presented here is known as Cartesian Multi-Product There are ready to use solutions for generating such iterators.
+Intuitively, the starting point to exploration of the problem scope would be to look at it as some variation of the [Cartesian Product](https://en.wikipedia.org/wiki/Cartesian_product) iterator.
+
+#### Python
+
+In Python, `itertools` package provides a function [`itertools::product`](https://docs.python.org/3/library/itertools.html#itertools.product) which can be used to generate such iterator:
+```python
+import itertools
+
+for set in itertools.product(range(2), repeat=3):
+    print(set)
+```
 
 #### Rust
+
 In Rust, crate [`itertools`](https://crates.io/crates/itertools) provides, [`multi_cartesian_product`](https://docs.rs/itertools/0.9.0/itertools/trait.Itertools.html#method.multi_cartesian_product) which can be used like this:
 ```rust
 use itertools::Itertools;
@@ -96,30 +107,21 @@ for set in multi_prod {
 ```
 ([playground](https://play.rust-lang.org/?version=stable&mode=debug&edition=2018&gist=6ef231f6b011b234babb0aa3e68b78ab))
 
-#### Python
-In Python, `itertools` package provides a function [`itertools::product`](https://docs.python.org/2/library/itertools.html#itertools.product) which can be used to generate such iterator:
-```python
-import itertools
-
-for set in itertools.product(range(2), repeat=3):
-    print(set)
-```
-
 #### Reasons for a custom algorithm
 
 Unfortunately, the computational complexity of generating all possible sets is growing exponentially, both in the cost of CPU and memory use.
 On a high-end laptop, computing the sets for all possible variations of the example above generates *8* sets and takes only *700 nanoseconds*, but computing the same for four sources and 16 resources (a scenario theoretically possible in Firefox with one language pack and Preferences UI for example) generates over *4 billion* sets and takes over *2 minutes*. 
 
-It becomes crucial to micro-optimize the algorithm and to use [Dynamic Programming](https://en.wikipedia.org/wiki/Dynamic_programming) and [Memoization](https://en.wikipedia.org/wiki/Memoization) techniques to minimize the cost of constructing, storing and retrieving sets.
+Since one part of static cost is the I/O, the application of a [Memoization](https://en.wikipedia.org/wiki/Memoization) technique allows us to minimize the cost of constructing, storing and retrieving sets.
 
-Second important observation is that in most scenarios the resource exists in only some of the sources, and ability to bail out from a branch of candidates that cannot lead to a solution is crucial for performance of the algorithm.
+Second important observation is that in most scenarios any resource exists in only some of the sources, and ability to bail out from a branch of candidates that cannot lead to a solution yields significantly fewer permutations in result.
 
 ## Optimizations
 
-The algorithm used here is heavily optimized. For the conservative scenario listed above, where 4 sources and 15 resources are all present in every source, the total time on the reference hardware is cut from *2 minutes* to *24 seconds*, while generating the same *4 billion* sets for a **5x** performance improvement. 
+The algorithm used here is highly efficient. For the conservative scenario listed above, where 4 sources and 15 resources are all present in every source, the total time on the reference hardware is cut from *2 minutes* to *24 seconds*, while generating the same *4 billion* sets for a **5x** performance improvement. 
 
 ### Streaming Iterator
-Regular `Iterator` in Rust requires the `Item` returned from `next` to be owned and not bound to the iterators lifetime. The concept of streaming iterator allows for `next` to return such reference which in this case is perfectly usable since all we need to return is a slice with indexes of sources for the `FluentBundle` to be generated from.
+Unline regular iterator, a streaming iterator allows a borrowed reference to be returned, which in this case, where the solver yields a read-only "view" of a solution, allows us to avoid having to clone it.
 
 ### Cache
 Memory is much less of a problem for the algorithm than CPU usage, so the solver uses a matrix of source/resource `Option` to memoize visited cells. This allows for each source/resource combination to be tested only once after which all future tests can be skipped.
@@ -167,7 +169,7 @@ When a candidate is complete, in other words, when the last cell of a candidate 
 
 #### Failure case
 
-If the test returns a failure, the next step is to evaluate alternative source for the same resource. Let's assume that *Source 0* had *Resource A* but it does not have *Resource B*. In such case, the algorithm will increment the cell's index:
+If the test returns a failure, the next step is to evaluate alternative source for the same resource. Let's assume that *Source 0* had *Resource A* but it does not have *Resource B*. In such case, the algorithm will increment the second cell's source index:
 
 ```text
       ▼
@@ -182,7 +184,7 @@ If the test returns a failure, the next step is to evaluate alternative source f
 
 and that will potentially lead to a partial solution `[0, 1, ]` to be stored for the next iteration.
 
-If the test fails and no more sources can be generated, the algorithm will *backtrack* from to previous sources looking for a cell with the **highest** index prior to the cell that was being evaluated which is not yet on the last source. If such cell is found, the results of all cells **to the right** of the newfound cell are **erased** and the next branch can be evaluated.
+If the test fails and no more sources can be generated, the algorithm will *backtrack* from the current cell looking for a cell with the **highest** index prior to the cell that was being evaluated which is not yet on the last source. If such cell is found, the results of all cells **to the right** of the newfound cell are **erased** and the next branch can be evaluated.
 
 If no such cell can be found, that means that the iterator is complete.
 
@@ -190,7 +192,7 @@ If no such cell can be found, that means that the iterator is complete.
 
 If the testing can be performed in parallel, like an asynchronous I/O, the above *serial* solution is sub-optimal as it misses on the benefit of testing multiple cells at once.
 
-In such scenario, a difference to the algorithm is that it will not first populate a complete candidate such that all cells are at indexes that may lead to a solution and then call the testing method on such complete candidate:
+In such a scenario, the algorithm will construct a candidate that *can* be valid (bailing only from candidates that have been already memoized as unavailable), and then test all of the untested cells in that candidate at once.
 
 ```text
           ▼
@@ -201,7 +203,7 @@ In such scenario, a difference to the algorithm is that it will not first popula
  ┗━┛ ┗━┛ ┗━┛
 ```
 
-The result of the testing function in such case, is a set of results for each cell allowing the algorithm to accept or reject the candidate, and memoize which branches should be skipped in the later evaluations.
+When the parallel execution returns, the algorithm memoizes all new cell results and tests if the candidate is now a valid complete solution.
 
 #### Success case
 
