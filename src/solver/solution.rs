@@ -82,10 +82,8 @@ impl Solution {
                 }
                 source_idx += 1;
             }
-            // println!("prune new candidate: {}, {}", i, source_idx);
             self.candidate[i] = source_idx;
         }
-        // println!("prune: {:?}", self.candidate);
         true
     }
 

@@ -215,7 +215,7 @@ In the example state above, the current cell can be advanced to *source 1* and t
 
 If that is successful, the `[0, 0, 1]` set is a complete solution and is yielded.
 
-Then, the next state to be tested is:
+Then, if the iterator is resumed, the next state to be tested is:
 
 ```text
       ▼
