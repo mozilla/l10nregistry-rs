@@ -42,7 +42,7 @@ impl SerialProblemSolver {
     }
 
     fn test_current_cell(&mut self) -> bool {
-        let res_idx = self.solution.idx;
+        let res_idx = self.solution.res_idx;
         let source_idx = self.solution.candidate[res_idx];
         let cell = &self.solution.cache[res_idx][source_idx];
         if let Some(val) = cell {
@@ -54,7 +54,7 @@ impl SerialProblemSolver {
 
     #[inline]
     pub fn next(&mut self) -> Option<&Vec<usize>> {
-        if self.solution.depth == 0 || self.solution.width == 0 {
+        if self.solution.depth == 0 || self.solution.res_len == 0 {
             return None;
         }
 
@@ -83,7 +83,7 @@ impl SerialProblemSolver {
 
     #[inline]
     pub fn next_bundle(&mut self) -> Option<FluentBundle> {
-        if self.solution.depth == 0 || self.solution.width == 0 {
+        if self.solution.depth == 0 || self.solution.res_len == 0 {
             return None;
         }
 

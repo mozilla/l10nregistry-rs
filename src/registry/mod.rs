@@ -19,7 +19,7 @@ pub use synchronous::GenerateBundlesSync;
 pub type FluentResourceSet = Vec<Rc<FluentResource>>;
 
 #[derive(Default)]
-pub struct Shared {
+pub(crate) struct Shared {
     lang_ids: Vec<LanguageIdentifier>,
     pub sources: RefCell<ChunkyVec<FileSource>>,
 }
@@ -29,7 +29,6 @@ pub struct L10nRegistryLocked<'a> {
 }
 
 impl<'a> L10nRegistryLocked<'a> {
-    /* ? */
     pub fn iter(&self) -> impl Iterator<Item = &FileSource> {
         self.lock.iter()
     }
@@ -56,7 +55,7 @@ impl<'a> L10nRegistryLocked<'a> {
 
 #[derive(Clone, Default)]
 pub struct L10nRegistry {
-    pub shared: Rc<Shared>,
+    pub(crate) shared: Rc<Shared>,
 }
 
 impl L10nRegistry {

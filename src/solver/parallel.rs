@@ -94,7 +94,7 @@ impl ParallelProblemSolver {
     }
 
     pub async fn next(&mut self) -> Option<&Vec<usize>> {
-        if self.solution.depth == 0 || self.solution.width == 0 {
+        if self.solution.depth == 0 || self.solution.res_len == 0 {
             return None;
         }
 
@@ -106,7 +106,7 @@ impl ParallelProblemSolver {
         }
         while self.solution.try_generate_complete_candidate() {
             if let Err(idx) = self.test_candidate().await {
-                self.solution.idx = idx;
+                self.solution.res_idx = idx;
                 if !self.solution.prune() {
                     return None;
                 }
@@ -130,7 +130,7 @@ impl Stream for ParallelProblemSolver {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Option<Self::Item>> {
-        if self.solution.depth == 0 || self.solution.width == 0 {
+        if self.solution.depth == 0 || self.solution.res_len == 0 {
             return None.into();
         }
 
@@ -139,8 +139,8 @@ impl Stream for ParallelProblemSolver {
                 let set = ready!(stream.poll_unpin(cx));
                 let testing_cells = testing_cells.clone();
 
-                if let Err(idx) = self.apply_test_result(set, &testing_cells) {
-                    self.solution.idx = idx;
+                if let Err(res_idx) = self.apply_test_result(set, &testing_cells) {
+                    self.solution.res_idx = res_idx;
                     self.solution.prune();
                     if !self.solution.bail() {
                         return None.into();
@@ -166,8 +166,8 @@ impl Stream for ParallelProblemSolver {
                             self.current_stream = Some((stream, testing_cells));
                             continue 'outer;
                         }
-                        Err(idx) => {
-                            self.solution.idx = idx;
+                        Err(res_idx) => {
+                            self.solution.res_idx = res_idx;
                             self.solution.prune();
                             if !self.solution.bail() {
                                 return None.into();

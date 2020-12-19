@@ -3,12 +3,17 @@ use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct Solution {
-    pub width: usize,
+    pub res_len: usize,
     pub depth: usize,
     pub candidate: Vec<usize>,
-    pub idx: usize,
+    pub res_idx: usize,
     pub dirty: bool,
 
+    // This is a matrix of all possible resources/sources cells
+    // with a the first `Option` indicating whether we already have
+    // tested the cell, and the inner `Option` is the result of the test
+    // with `None` meaning - the resource is missing, and `Some`
+    // containing an `Rc` of the resource.
     pub cache: Vec<Vec<Option<Option<Rc<FluentResource>>>>>,
 }
 
@@ -29,7 +34,7 @@ impl Solution {
     }
 
     fn is_current_cell_missing(&self) -> bool {
-        let res_idx = self.idx;
+        let res_idx = self.res_idx;
         let source_idx = self.candidate[res_idx];
         let cell = &self.cache[res_idx][source_idx];
         if let Some(None) = cell {
@@ -39,8 +44,8 @@ impl Solution {
     }
 
     pub fn try_advance_source(&mut self) -> bool {
-        while self.candidate[self.idx] < self.depth - 1 {
-            self.candidate[self.idx] += 1;
+        while self.candidate[self.res_idx] < self.depth - 1 {
+            self.candidate[self.res_idx] += 1;
             if !self.is_current_cell_missing() {
                 return true;
             }
@@ -49,10 +54,10 @@ impl Solution {
     }
 
     pub fn try_advance_resource(&mut self) -> bool {
-        if self.idx >= self.width - 1 {
+        if self.res_idx >= self.res_len - 1 {
             false
         } else {
-            self.idx += 1;
+            self.res_idx += 1;
             while self.is_current_cell_missing() {
                 if !self.try_advance_source() {
                     return false;
@@ -63,18 +68,18 @@ impl Solution {
     }
 
     pub fn try_backtrack(&mut self) -> bool {
-        while self.candidate[self.idx] == self.depth - 1 {
-            if self.idx == 0 {
+        while self.candidate[self.res_idx] == self.depth - 1 {
+            if self.res_idx == 0 {
                 return false;
             }
-            self.idx -= 1;
+            self.res_idx -= 1;
         }
-        self.candidate[self.idx] += 1;
+        self.candidate[self.res_idx] += 1;
         self.prune()
     }
 
     pub fn prune(&mut self) -> bool {
-        for i in self.idx + 1..self.width {
+        for i in self.res_idx + 1..self.res_len {
             let mut source_idx = 0;
             while self.is_cell_missing(i, source_idx) {
                 if source_idx >= self.depth - 1 {
@@ -88,7 +93,7 @@ impl Solution {
     }
 
     pub fn is_complete(&self) -> bool {
-        self.idx == self.width - 1
+        self.res_idx == self.res_len - 1
     }
 
     pub fn bail(&mut self) -> bool {

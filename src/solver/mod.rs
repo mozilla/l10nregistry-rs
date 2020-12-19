@@ -21,17 +21,17 @@ pub struct ProblemSolver {
 
 impl ProblemSolver {
     pub fn new(keys: Vec<String>, langid: LanguageIdentifier, reg: L10nRegistry) -> Self {
-        let width = keys.len();
+        let res_len = keys.len();
         let depth = reg.shared.sources.borrow().len();
         Self {
             solution: Solution {
-                width,
+                res_len,
                 depth,
-                candidate: vec![0; width],
-                idx: 0,
+                candidate: vec![0; res_len],
+                res_idx: 0,
                 dirty: false,
 
-                cache: vec![vec![None; depth]; width],
+                cache: vec![vec![None; depth]; res_len],
             },
 
             langid,

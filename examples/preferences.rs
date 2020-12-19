@@ -32,12 +32,12 @@ async fn main() {
     let browser_fs = l10nregistry::tokio::file_source(
         "browser".to_string(),
         locales.clone(),
-        "/home/zbraniecki/projects/l10nregistry-rs/tests/resources/browser/{locale}".into(),
+        "./tests/resources/browser/{locale}".into(),
     );
     let toolkit_fs = l10nregistry::tokio::file_source(
         "toolkit".to_string(),
         locales.clone(),
-        "/home/zbraniecki/projects/l10nregistry-rs/tests/resources/toolkit/{locale}".into(),
+        "./tests/resources/toolkit/{locale}".into(),
     );
 
     reg.register_sources(vec![toolkit_fs, browser_fs]).unwrap();
