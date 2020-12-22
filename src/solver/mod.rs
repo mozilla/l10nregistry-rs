@@ -40,6 +40,14 @@ impl ProblemSolver {
         }
     }
 
+    // Experimental
+    pub fn add_key(&mut self, key: String) {
+        self.keys.push(key);
+        self.solution.cache.push(vec![None; self.solution.depth]);
+        self.solution.res_len += 1;
+        self.solution.candidate.push(0);
+    }
+
     fn get_bundle(&self) -> FluentBundle {
         let mut bundle = FluentBundle::new(&[self.langid.clone()]);
         for (res_idx, source_idx) in self.solution.candidate.iter().enumerate() {

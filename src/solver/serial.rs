@@ -52,6 +52,33 @@ impl SerialProblemSolver {
         }
     }
 
+    pub fn prefetch(&mut self) -> bool {
+        if self.solution.depth == 0 || self.solution.res_len == 0 {
+            return false;
+        }
+
+        if self.solution.dirty {
+            if !self.solution.bail() {
+                return false;
+            }
+            self.solution.dirty = false;
+        }
+        loop {
+            if !self.test_current_cell() {
+                if !self.solution.bail() {
+                    return false;
+                }
+                continue;
+            }
+            if self.solution.is_complete() {
+                return true;
+            }
+            if !self.solution.try_advance_resource() {
+                return false;
+            }
+        }
+    }
+
     #[inline]
     pub fn next(&mut self) -> Option<&Vec<usize>> {
         if self.solution.depth == 0 || self.solution.res_len == 0 {

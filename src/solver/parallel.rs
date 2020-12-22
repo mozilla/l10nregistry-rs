@@ -93,6 +93,35 @@ impl ParallelProblemSolver {
         Ok(())
     }
 
+    pub async fn prefetch(&mut self) -> bool {
+        if self.solution.depth == 0 || self.solution.res_len == 0 {
+            return false;
+        }
+
+        if self.solution.dirty {
+            if !self.solution.bail() {
+                return false;
+            }
+            self.solution.dirty = false;
+        }
+
+        while self.solution.try_generate_complete_candidate() {
+            if let Err(idx) = self.test_candidate().await {
+                self.solution.res_idx = idx;
+                if !self.solution.prune() {
+                    return false;
+                }
+                if !self.solution.bail() {
+                    return false;
+                }
+                continue;
+            } else {
+                return true;
+            }
+        }
+        false
+    }
+
     pub async fn next(&mut self) -> Option<&Vec<usize>> {
         if self.solution.depth == 0 || self.solution.res_len == 0 {
             return None;
