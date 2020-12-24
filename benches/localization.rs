@@ -372,15 +372,22 @@ fn preferences_bench(c: &mut Criterion) {
     reg.register_sources(vec![toolkit_fs, browser_fs]).unwrap();
 
     let res_ids: Vec<String> = RES_IDS.iter().map(|s| s.to_string()).collect();
-    c.bench_function("localization", move |b| {
+    c.bench_function("localization/format_value_sync", |b| {
         b.iter(|| {
             let loc = SyncLocalization::with_generator(res_ids.clone(), reg.clone());
-            // let mut errors = vec![];
 
             for id in L10N_IDS.iter() {
                 loc.format_value_sync(id, None);
             }
+        })
+    });
 
+    let keys: Vec<L10nKey> = L10N_IDS.iter().map(|id| L10nKey { id: id.to_string(), args: None }).collect();
+    c.bench_function("localization/format_messages_sync", |b| {
+        b.iter(|| {
+            let loc = SyncLocalization::with_generator(res_ids.clone(), reg.clone());
+
+            loc.format_messages_sync(&keys);
         })
     });
 }
