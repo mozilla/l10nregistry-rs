@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use super::{L10nRegistry, L10nRegistryLocked};
 use crate::fluent::{FluentBundle, FluentResource};
+use fluent_fallback::generator::BundleIterator;
 
 use unic_langid::LanguageIdentifier;
 
@@ -56,6 +57,21 @@ impl GenerateBundlesSync {
             resource_ids,
             reg,
             solver: None,
+        }
+    }
+}
+
+impl BundleIterator for GenerateBundlesSync {
+    type Resource = Rc<FluentResource>;
+
+    fn prefetch(&mut self) {
+        if let Some(solver) = &mut self.solver {
+            solver.prefetch();
+        } else if let Some(lang) = self.lang_ids.next() {
+            let mut solver =
+                SerialProblemSolver::new(self.resource_ids.clone(), lang, self.reg.clone());
+            solver.prefetch();
+            self.solver = Some(solver);
         }
     }
 }

@@ -3,7 +3,7 @@ use criterion::criterion_main;
 use criterion::Criterion;
 
 use l10nregistry::registry::L10nRegistry;
-use fluent_fallback::{L10nKey, SyncLocalization};
+use fluent_fallback::{L10nKey, Localization};
 
 const RES_IDS: &[&str] = &[
     "branding/brand.ftl",
@@ -374,20 +374,22 @@ fn preferences_bench(c: &mut Criterion) {
     let res_ids: Vec<String> = RES_IDS.iter().map(|s| s.to_string()).collect();
     c.bench_function("localization/format_value_sync", |b| {
         b.iter(|| {
-            let loc = SyncLocalization::with_generator(res_ids.clone(), reg.clone());
+            let loc = Localization::with_generator(res_ids.clone(), true, reg.clone());
+            let mut errors = vec![];
 
             for id in L10N_IDS.iter() {
-                loc.format_value_sync(id, None);
+                loc.format_value_sync(id, None, &mut errors);
             }
         })
     });
 
-    let keys: Vec<L10nKey> = L10N_IDS.iter().map(|id| L10nKey { id: id.to_string(), args: None }).collect();
+    let keys: Vec<L10nKey> = L10N_IDS.iter().map(|&id| L10nKey { id: id.into(), args: None }).collect();
     c.bench_function("localization/format_messages_sync", |b| {
         b.iter(|| {
-            let loc = SyncLocalization::with_generator(res_ids.clone(), reg.clone());
+            let loc = Localization::with_generator(res_ids.clone(), true, reg.clone());
+            let mut errors = vec![];
 
-            loc.format_messages_sync(&keys);
+            loc.format_messages_sync(&keys, &mut errors);
         })
     });
 }

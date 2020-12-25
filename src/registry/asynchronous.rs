@@ -2,13 +2,15 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
+use std::rc::Rc;
 
 use super::L10nRegistry;
-use crate::fluent::FluentBundle;
+use crate::fluent::{FluentBundle, FluentResource};
 
 use crate::solver::ParallelProblemSolver;
 use futures::{ready, Stream};
 use unic_langid::LanguageIdentifier;
+use fluent_fallback::generator::BundleStream;
 
 impl L10nRegistry {
     pub fn generate_bundles_for_lang(
@@ -50,6 +52,10 @@ impl GenerateBundles {
             solver: None,
         }
     }
+}
+
+impl BundleStream for GenerateBundles {
+    type Resource = Rc<FluentResource>;
 }
 
 impl Stream for GenerateBundles {
