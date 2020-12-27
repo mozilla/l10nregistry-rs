@@ -1,137 +1,72 @@
 use super::ProblemSolver;
-use crate::fluent::FluentBundle;
-use crate::registry::L10nRegistry;
 use std::ops::{Deref, DerefMut};
-use unic_langid::LanguageIdentifier;
 
-pub struct SerialProblemSolver {
-    solver: ProblemSolver,
+pub trait SyncTester {
+    fn test_sync(&self, res_idx: usize, source_idx: usize) -> bool;
 }
+
+pub struct SerialProblemSolver(ProblemSolver);
 
 impl Deref for SerialProblemSolver {
     type Target = ProblemSolver;
 
     fn deref(&self) -> &Self::Target {
-        &self.solver
+        &self.0
     }
 }
 
 impl DerefMut for SerialProblemSolver {
     fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.solver
+        &mut self.0
     }
 }
 
 impl SerialProblemSolver {
-    pub fn new(keys: Vec<String>, langid: LanguageIdentifier, reg: L10nRegistry) -> Self {
-        Self {
-            solver: ProblemSolver::new(keys, langid, reg),
-        }
+    pub fn new(width: usize, depth: usize) -> Self {
+        Self(ProblemSolver::new(width, depth))
     }
+}
 
-    fn fetch_cell(&mut self, res_idx: usize, source_idx: usize) -> bool {
-        let key = self.keys[res_idx].clone();
-        let file = self
-            .reg
-            .lock()
-            .get_file_from_source(&self.langid, source_idx, &key);
-
-        let result = file.is_some();
-        self.solution.cache[res_idx][source_idx] = Some(file);
-        result
-    }
-
-    fn test_current_cell(&mut self) -> bool {
-        let res_idx = self.solution.res_idx;
-        let source_idx = self.solution.candidate[res_idx];
-        let cell = &self.solution.cache[res_idx][source_idx];
+impl SerialProblemSolver {
+    fn test_current_cell<T>(&mut self, tester: &T) -> bool
+    where
+        T: SyncTester,
+    {
+        let res_idx = self.idx;
+        let source_idx = self.solution[res_idx];
+        let cell = &self.cache[res_idx][source_idx];
         if let Some(val) = cell {
-            val.is_some()
+            *val
         } else {
-            self.fetch_cell(res_idx, source_idx)
+            tester.test_sync(res_idx, source_idx)
         }
     }
 
-    pub fn prefetch(&mut self) -> bool {
-        if self.solution.depth == 0 || self.solution.res_len == 0 {
-            return false;
-        }
-
-        if self.solution.dirty {
-            if !self.solution.bail() {
-                return false;
-            }
-            self.solution.dirty = false;
-        }
-        loop {
-            if !self.test_current_cell() {
-                if !self.solution.bail() {
-                    return false;
-                }
-                continue;
-            }
-            if self.solution.is_complete() {
-                return true;
-            }
-            if !self.solution.try_advance_resource() {
-                return false;
-            }
-        }
-    }
-
-    #[inline]
-    pub fn next(&mut self) -> Option<&Vec<usize>> {
-        if self.solution.depth == 0 || self.solution.res_len == 0 {
+    pub fn next<T>(&mut self, tester: &T) -> Option<&[usize]>
+    where
+        T: SyncTester,
+    {
+        if self.width == 0 || self.depth == 0 {
             return None;
         }
-
-        if self.solution.dirty {
-            if !self.solution.bail() {
+        if self.dirty {
+            if !self.bail() {
                 return None;
             }
-            self.solution.dirty = false;
+            self.dirty = false;
         }
         loop {
-            if !self.test_current_cell() {
-                if !self.solution.bail() {
+            if !self.test_current_cell(tester) {
+                if !self.bail() {
                     return None;
                 }
                 continue;
             }
-            if self.solution.is_complete() {
-                self.solution.dirty = true;
-                return Some(&self.solution.candidate);
+            if self.is_complete() {
+                self.dirty = true;
+                return Some(&self.solution);
             }
-            if !self.solution.try_advance_resource() {
-                return None;
-            }
-        }
-    }
-
-    #[inline]
-    pub fn next_bundle(&mut self) -> Option<FluentBundle> {
-        if self.solution.depth == 0 || self.solution.res_len == 0 {
-            return None;
-        }
-
-        if self.solution.dirty {
-            if !self.solution.bail() {
-                return None;
-            }
-            self.solution.dirty = false;
-        }
-        loop {
-            if !self.test_current_cell() {
-                if !self.solution.bail() {
-                    return None;
-                }
-                continue;
-            }
-            if self.solution.is_complete() {
-                self.solution.dirty = true;
-                return Some(self.get_bundle());
-            }
-            if !self.solution.try_advance_resource() {
+            if !self.try_advance_resource() {
                 return None;
             }
         }
@@ -140,38 +75,12 @@ impl SerialProblemSolver {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::solver::testing::get_scenarios;
-    use unic_langid::LanguageIdentifier;
-
     #[test]
-    fn test_sync() {
-        let scenarios = get_scenarios();
+    fn problem_solver() {
+        // let keys = vec!["key1.ftl", "key2.ftl"];
+        // let sources = vec!["source1", "source2"];
+        // let args = ("foo",);
 
-        let langid: LanguageIdentifier = "en-US".parse().unwrap();
-
-        for scenario in scenarios {
-            let reg = scenario.get_l10nregistry();
-            let mut gen = SerialProblemSolver::new(scenario.res_ids.clone(), langid.clone(), reg);
-
-            if let Some(solutions) = &scenario.solutions {
-                let mut i = 0;
-                while let Some(solution) = gen.next() {
-                    assert!(
-                        solutions.len() > i,
-                        "too many solutions, scenario: {}",
-                        scenario.name
-                    );
-                    assert_eq!(solution, solutions.get(i).unwrap());
-                    i += 1;
-                }
-                assert_eq!(
-                    i,
-                    solutions.len(),
-                    "too few solutions, scenario: {}",
-                    scenario.name
-                );
-            }
-        }
+        // let ps = ProblemSolver::new(keys.len(), sources.len(), &foo);
     }
 }

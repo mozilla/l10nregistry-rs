@@ -1,10 +1,6 @@
-use criterion::criterion_group;
-use criterion::criterion_main;
-use criterion::Criterion;
-
 use futures::stream::Collect;
 use futures::stream::FuturesOrdered;
-use futures::StreamExt;
+use futures::stream::StreamExt;
 use l10nregistry::solver::testing::get_scenarios;
 use l10nregistry::solver::{AsyncTester, ParallelProblemSolver, SerialProblemSolver, SyncTester};
 use std::future::Future;
@@ -32,6 +28,7 @@ impl Future for SingleTestResult {
 }
 
 pub type ResourceSetStream = Collect<FuturesOrdered<SingleTestResult>, Vec<bool>>;
+
 pub struct TestResult(ResourceSetStream);
 
 impl std::marker::Unpin for TestResult {}
@@ -82,37 +79,64 @@ impl<'t> futures::stream::Stream for TestStream<'t> {
     }
 }
 
-fn solver_bench(c: &mut Criterion) {
-    let scenarios = get_scenarios();
-
-    let mut group = c.benchmark_group("solver");
-
-    for scenario in scenarios {
+#[test]
+fn serial_scenarios_test() {
+    for scenario in get_scenarios() {
         let tester = MockTester {
             values: scenario.values.clone(),
         };
 
-        group.bench_function(&format!("serial/{}", &scenario.name), |b| {
-            b.iter(|| {
-                let mut gen = SerialProblemSolver::new(scenario.width, scenario.depth);
-                while let Some(_) = gen.next(&tester) {}
-            })
-        });
+        let mut gen = SerialProblemSolver::new(scenario.width, scenario.depth);
 
-        {
-            let rt = tokio::runtime::Runtime::new().unwrap();
-
-            group.bench_function(&format!("parallel/{}", &scenario.name), |b| {
-                b.iter(|| {
-                    let gen = ParallelProblemSolver::new(scenario.width, scenario.depth);
-                    let mut t = TestStream::new(gen, &tester);
-                    rt.block_on(async { while let Some(_) = t.next().await {} });
-                })
-            });
+        let mut idx = 0;
+        while let Some(candidate) = gen.next(&tester) {
+            let expected = scenario
+                .solutions
+                .get(idx)
+                .expect("SerialProblemSolver produced superfluous solution");
+            assert_eq!(
+                candidate,
+                expected.as_slice(),
+                "SerialProblemSolver produced wrong solution"
+            );
+            idx += 1;
         }
+
+        assert_eq!(
+            scenario.solutions.len(),
+            idx,
+            "SerialProblemSolver produced too few solutions"
+        );
     }
-    group.finish();
 }
 
-criterion_group!(benches, solver_bench);
-criterion_main!(benches);
+#[tokio::test]
+async fn parallel_scenarios_test() {
+    for scenario in get_scenarios() {
+        let tester = MockTester {
+            values: scenario.values.clone(),
+        };
+        let gen = ParallelProblemSolver::new(scenario.width, scenario.depth);
+
+        let mut idx = 0;
+        let mut t = TestStream::new(gen, &tester);
+        while let Some(candidate) = t.next().await {
+            let expected = scenario
+                .solutions
+                .get(idx)
+                .expect("ParallelSolver produced superfluous solution");
+            assert_eq!(
+                candidate,
+                expected.as_slice(),
+                "ParallelSolver produced wrong solution"
+            );
+            idx += 1;
+        }
+
+        assert_eq!(
+            scenario.solutions.len(),
+            idx,
+            "ParallelSolver produced too few solutions"
+        );
+    }
+}

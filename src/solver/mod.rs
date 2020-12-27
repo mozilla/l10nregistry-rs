@@ -1,61 +1,113 @@
 mod parallel;
 mod serial;
-mod solution;
 pub mod testing;
 
-pub use parallel::ParallelProblemSolver;
-pub use serial::SerialProblemSolver;
-pub use solution::Solution;
-
-use crate::fluent::FluentBundle;
-use crate::registry::L10nRegistry;
-use unic_langid::LanguageIdentifier;
+pub use parallel::{AsyncTester, ParallelProblemSolver};
+pub use serial::{SerialProblemSolver, SyncTester};
 
 pub struct ProblemSolver {
-    solution: Solution,
+    width: usize,
+    depth: usize,
 
-    langid: LanguageIdentifier,
-    keys: Vec<String>,
-    reg: L10nRegistry,
+    cache: Vec<Vec<Option<bool>>>,
+
+    solution: Vec<usize>,
+    idx: usize,
+
+    dirty: bool,
 }
 
 impl ProblemSolver {
-    pub fn new(keys: Vec<String>, langid: LanguageIdentifier, reg: L10nRegistry) -> Self {
-        let res_len = keys.len();
-        let depth = reg.shared.sources.borrow().len();
+    pub fn new(width: usize, depth: usize) -> Self {
         Self {
-            solution: Solution {
-                res_len,
-                depth,
-                candidate: vec![0; res_len],
-                res_idx: 0,
-                dirty: false,
+            width,
+            depth,
+            cache: vec![vec![None; depth]; width],
 
-                cache: vec![vec![None; depth]; res_len],
-            },
+            solution: vec![0; width],
+            idx: 0,
 
-            langid,
-            keys,
-            reg,
+            dirty: false,
+        }
+    }
+}
+
+impl ProblemSolver {
+    pub fn bail(&mut self) -> bool {
+        if self.try_advance_source() {
+            true
+        } else {
+            self.try_backtrack()
         }
     }
 
-    // Experimental
-    pub fn add_key(&mut self, key: String) {
-        self.keys.push(key);
-        self.solution.cache.push(vec![None; self.solution.depth]);
-        self.solution.res_len += 1;
-        self.solution.candidate.push(0);
+    fn is_cell_missing(&self, res_idx: usize, source_idx: usize) -> bool {
+        if let Some(false) = self.cache[res_idx][source_idx] {
+            return true;
+        }
+        false
     }
 
-    fn get_bundle(&self) -> FluentBundle {
-        let mut bundle = FluentBundle::new(&[self.langid.clone()]);
-        for (res_idx, source_idx) in self.solution.candidate.iter().enumerate() {
-            let cell = &self.solution.cache[res_idx][*source_idx];
-            bundle
-                .add_resource(cell.as_ref().unwrap().as_ref().unwrap().clone())
-                .unwrap()
+    fn is_current_cell_missing(&self) -> bool {
+        let res_idx = self.idx;
+        let source_idx = self.solution[res_idx];
+        let cell = &self.cache[res_idx][source_idx];
+        if let Some(false) = cell {
+            return true;
         }
-        bundle
+        false
+    }
+
+    pub fn try_advance_resource(&mut self) -> bool {
+        if self.idx >= self.width - 1 {
+            false
+        } else {
+            self.idx += 1;
+            while self.is_current_cell_missing() {
+                if !self.try_advance_source() {
+                    return false;
+                }
+            }
+            true
+        }
+    }
+
+    pub fn try_advance_source(&mut self) -> bool {
+        while self.solution[self.idx] < self.depth - 1 {
+            self.solution[self.idx] += 1;
+            if !self.is_current_cell_missing() {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn try_backtrack(&mut self) -> bool {
+        while self.solution[self.idx] == self.depth - 1 {
+            if self.idx == 0 {
+                return false;
+            }
+            self.idx -= 1;
+        }
+        self.solution[self.idx] += 1;
+        self.prune()
+    }
+
+    pub fn prune(&mut self) -> bool {
+        for i in self.idx + 1..self.width {
+            let mut source_idx = 0;
+            while self.is_cell_missing(i, source_idx) {
+                if source_idx >= self.depth - 1 {
+                    return false;
+                }
+                source_idx += 1;
+            }
+            self.solution[i] = source_idx;
+        }
+        true
+    }
+
+    pub fn is_complete(&self) -> bool {
+        self.idx == self.width - 1
     }
 }

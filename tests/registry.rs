@@ -1,151 +1,66 @@
-use l10nregistry::registry::L10nRegistry;
-use unic_langid::LanguageIdentifier;
+use fluent_testing::get_scenarios;
+use l10nregistry::testing::get_test_file_source;
+
+use async_trait::async_trait;
+use fluent_bundle::FluentArgs;
+use l10nregistry::source::FileFetcher;
+use l10nregistry::FileSource;
+use l10nregistry::L10nRegistry;
 
 #[test]
-fn test_generate_sources_for_file() {
-    let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-    let fs1 = l10nregistry::tokio::file_source(
-        "toolkit".to_string(),
-        vec![en_us.clone()],
-        "./tests/resources/toolkit/{locale}".into(),
-    );
-    let fs2 = l10nregistry::tokio::file_source(
-        "browser".to_string(),
-        vec![en_us.clone()],
-        "./tests/resources/browser/{locale}".into(),
-    );
+fn registry_test() {
+    for scenario in get_scenarios() {
+        let mut reg = L10nRegistry::new();
 
-    let mut reg = L10nRegistry::default();
-    reg.register_sources(vec![fs1, fs2]).unwrap();
+        let sources = scenario
+            .file_sources
+            .iter()
+            .map(|source| {
+                get_test_file_source(
+                    &source.name,
+                    source.locales.iter().map(|s| s.parse().unwrap()).collect(),
+                    &source.path_scheme,
+                )
+            })
+            .collect();
 
-    {
-        let lock = reg.lock();
+        reg.register_sources(sources);
 
-        let toolkit = lock.get_source("toolkit").unwrap();
-        let browser = lock.get_source("browser").unwrap();
+        let mut bundles = reg.generate_bundles_sync(
+            scenario
+                .locales
+                .iter()
+                .map(|l| l.parse().unwrap())
+                .collect(),
+            scenario.res_ids.clone(),
+            Some(|bundle| {
+                bundle
+                    .add_function("PLATFORM", |_positional, _named| "linux".into())
+                    .expect("Failed to add a function to the bundle.");
+                bundle.set_use_isolating(false);
+            }),
+        );
 
-        let mut i = lock.generate_sources_for_file(&en_us, "toolkit/menu.ftl");
+        let bundle = bundles.next().unwrap();
 
-        assert_eq!(i.next(), Some(toolkit));
-        assert_eq!(i.next(), Some(browser));
-        assert_eq!(i.next(), None);
+        let mut errors = vec![];
 
-        assert!(browser
-            .fetch_file_sync(&en_us, "toolkit/menu.ftl")
-            .is_none());
-
-        let mut i = lock.generate_sources_for_file(&en_us, "toolkit/menu.ftl");
-        assert_eq!(i.next(), Some(toolkit));
-        assert_eq!(i.next(), None);
-
-        assert!(toolkit
-            .fetch_file_sync(&en_us, "toolkit/menu.ftl")
-            .is_some());
-
-        let mut i = lock.generate_sources_for_file(&en_us, "toolkit/menu.ftl");
-        assert_eq!(i.next(), Some(toolkit));
-        assert_eq!(i.next(), None);
+        for query in scenario.queries.iter() {
+            let args = query.input.args.as_ref().map(|args| {
+                let mut result = FluentArgs::new();
+                for arg in args.as_slice() {
+                    result.add(arg.id.clone(), arg.value.clone().into());
+                }
+                result
+            });
+            let msg = bundle.get_message(&query.input.id).unwrap();
+            if let Some(output) = &query.output {
+                if let Some(value) = &output.value {
+                    let v = bundle.format_pattern(msg.value.unwrap(), args.as_ref(), &mut errors);
+                    assert_eq!(v, value.as_str(), "{}", query.input.id);
+                }
+            }
+        }
+        assert_eq!(errors, vec![]);
     }
-}
-
-#[test]
-fn test_generate_bundles_for_lang_sync() {
-    let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-    let fs1 = l10nregistry::tokio::file_source(
-        "toolkit".to_string(),
-        vec![en_us.clone()],
-        "./tests/resources/toolkit/{locale}".into(),
-    );
-    let fs2 = l10nregistry::tokio::file_source(
-        "browser".to_string(),
-        vec![en_us.clone()],
-        "./tests/resources/browser/{locale}".into(),
-    );
-
-    let mut reg = L10nRegistry::default();
-    reg.register_sources(vec![fs1, fs2]).unwrap();
-
-    let paths = vec!["toolkit/menu.ftl".into(), "browser/brand.ftl".into()];
-    let mut i = reg.generate_bundles_for_lang_sync(en_us.clone(), paths);
-
-    assert!(i.next().is_some());
-    assert!(i.next().is_none());
-}
-
-#[test]
-fn test_generate_bundles_sync() {
-    let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-    let fs1 = l10nregistry::tokio::file_source(
-        "toolkit".to_string(),
-        vec![en_us.clone()],
-        "./tests/resources/toolkit/{locale}".into(),
-    );
-    let fs2 = l10nregistry::tokio::file_source(
-        "browser".to_string(),
-        vec![en_us.clone()],
-        "./tests/resources/browser/{locale}".into(),
-    );
-
-    let mut reg = L10nRegistry::default();
-    reg.register_sources(vec![fs1, fs2]).unwrap();
-
-    let paths = vec!["toolkit/menu.ftl".into(), "browser/brand.ftl".into()];
-    let lang_ids = vec![en_us];
-    let mut i = reg.generate_bundles_sync(lang_ids, paths);
-
-    assert!(i.next().is_some());
-    assert!(i.next().is_none());
-}
-
-#[tokio::test]
-async fn test_generate_bundles_for_lang() {
-    use futures::stream::StreamExt;
-
-    let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-    let fs1 = l10nregistry::tokio::file_source(
-        "toolkit".to_string(),
-        vec![en_us.clone()],
-        "./tests/resources/toolkit/{locale}".into(),
-    );
-    let fs2 = l10nregistry::tokio::file_source(
-        "browser".to_string(),
-        vec![en_us.clone()],
-        "./tests/resources/browser/{locale}".into(),
-    );
-
-    let mut reg = L10nRegistry::default();
-    reg.register_sources(vec![fs1, fs2]).unwrap();
-
-    let paths = vec!["toolkit/menu.ftl".into(), "browser/brand.ftl".into()];
-    let mut i = reg.generate_bundles_for_lang(en_us, paths);
-
-    assert!(i.next().await.is_some());
-    assert!(i.next().await.is_none());
-}
-
-#[tokio::test]
-async fn test_generate_bundles() {
-    use futures::stream::StreamExt;
-
-    let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-    let fs1 = l10nregistry::tokio::file_source(
-        "toolkit".to_string(),
-        vec![en_us.clone()],
-        "./tests/resources/toolkit/{locale}".into(),
-    );
-    let fs2 = l10nregistry::tokio::file_source(
-        "browser".to_string(),
-        vec![en_us.clone()],
-        "./tests/resources/browser/{locale}".into(),
-    );
-
-    let mut reg = L10nRegistry::default();
-    reg.register_sources(vec![fs1, fs2]).unwrap();
-
-    let paths = vec!["toolkit/menu.ftl".into(), "browser/brand.ftl".into()];
-    let langs = vec![en_us];
-    let mut i = reg.generate_bundles(langs, paths);
-
-    assert!(i.next().await.is_some());
-    assert!(i.next().await.is_none());
 }
