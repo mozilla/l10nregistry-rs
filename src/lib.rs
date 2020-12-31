@@ -4,9 +4,7 @@ use std::io;
 pub mod fluent;
 pub mod registry;
 pub mod source;
-
-#[cfg(feature = "tokio")]
-pub mod tokio;
+pub mod testing;
 
 pub use source::FileSource;
 

@@ -2,11 +2,20 @@ use std::borrow::Cow;
 
 use fluent_fallback::{AsyncLocalization, L10nKey, SyncLocalization};
 use l10nregistry::registry::L10nRegistry;
+use l10nregistry::testing::get_test_file_source;
 use serial_test::serial;
 use unic_langid::{langid, LanguageIdentifier};
 
 static LOCALES: &[LanguageIdentifier] = &[langid!("pl"), langid!("en-US")];
 static mut L10N_REGISTRY: Option<L10nRegistry> = None;
+
+const FTL_RESOURCE: &str = "toolkit/updates/history.ftl";
+const L10N_ID_PL_EN: (&str, Option<&str>) = ("history-title", Some("Historia aktualizacji"));
+const L10N_ID_MISSING: (&str, Option<&str>) = ("missing-id", None);
+const L10N_ID_ONLY_EN: (&str, Option<&str>) = (
+    "history-intro",
+    Some("The following updates have been installed"),
+);
 
 fn get_l10n_registry() -> &'static L10nRegistry {
     let reg: &mut Option<L10nRegistry> = unsafe { &mut L10N_REGISTRY };
@@ -16,16 +25,10 @@ fn get_l10n_registry() -> &'static L10nRegistry {
 
         reg.set_lang_ids(get_app_locales().to_vec());
 
-        let browser_fs = l10nregistry::tokio::file_source(
-            "browser".to_string(),
-            get_app_locales().to_vec(),
-            "./tests/resources/browser/{locale}".into(),
-        );
-        let toolkit_fs = l10nregistry::tokio::file_source(
-            "toolkit".to_string(),
-            get_app_locales().to_vec(),
-            "./tests/resources/toolkit/{locale}".into(),
-        );
+        let toolkit_fs =
+            get_test_file_source("toolkit", get_app_locales().to_vec(), "toolkit/{locale}");
+        let browser_fs =
+            get_test_file_source("browser", get_app_locales().to_vec(), "browser/{locale}");
 
         reg.register_sources(vec![browser_fs, toolkit_fs]).unwrap();
         reg
@@ -55,11 +58,11 @@ mod tests {
     use super::*;
 
     fn setup_sync_test() -> SyncLocalization<L10nRegistry> {
-        sync_localization(get_l10n_registry(), vec!["browser/main.ftl".into()])
+        sync_localization(get_l10n_registry(), vec![FTL_RESOURCE.into()])
     }
 
     fn setup_async_test() -> AsyncLocalization<L10nRegistry> {
-        async_localization(get_l10n_registry(), vec!["browser/main.ftl".into()])
+        async_localization(get_l10n_registry(), vec![FTL_RESOURCE.into()])
     }
 
     #[test]
@@ -67,14 +70,11 @@ mod tests {
     fn localization_format_value_sync() {
         let loc = setup_sync_test();
 
-        let value = loc.format_value_sync("hello-world", None);
-        assert_eq!(value, "Hello World [browser][pl]");
-
-        let value = loc.format_value_sync("missing-message", None);
-        assert_eq!(value, "missing-message");
-
-        let value = loc.format_value_sync("only-english", None);
-        assert_eq!(value, "This message is only in English [browser][en-US]");
+        for query in &[L10N_ID_PL_EN, L10N_ID_MISSING, L10N_ID_ONLY_EN] {
+            let value = loc.format_value_sync(query.0, None);
+            let result = query.1.unwrap_or(query.0);
+            assert_eq!(value, result);
+        }
     }
 
     #[test]
@@ -82,30 +82,22 @@ mod tests {
     fn localization_format_values_sync() {
         let loc = setup_sync_test();
 
-        let keys = vec![
-            L10nKey {
-                id: "hello-world".to_string(),
+        let ids = &[L10N_ID_PL_EN, L10N_ID_MISSING, L10N_ID_ONLY_EN];
+        let keys = ids
+            .iter()
+            .map(|query| L10nKey {
+                id: query.0.to_string(),
                 args: None,
-            },
-            L10nKey {
-                id: "missing-message".to_string(),
-                args: None,
-            },
-            L10nKey {
-                id: "only-english".to_string(),
-                args: None,
-            },
-        ];
+            })
+            .collect::<Vec<_>>();
+
         let values = loc.format_values_sync(&keys);
-        assert_eq!(values.len(), 3);
-        assert_eq!(values[0], Some(Cow::Borrowed("Hello World [browser][pl]")));
-        assert_eq!(values[1], None);
-        assert_eq!(
-            values[2],
-            Some(Cow::Borrowed(
-                "This message is only in English [browser][en-US]"
-            ))
-        );
+
+        assert_eq!(values.len(), ids.len());
+
+        for (value, query) in values.iter().zip(ids) {
+            assert_eq!(value.clone(), query.1.map(|v| Cow::Borrowed(v)));
+        }
     }
 
     #[tokio::test]
@@ -113,14 +105,11 @@ mod tests {
     async fn localization_format_value_async() {
         let loc = setup_async_test();
 
-        let value = loc.format_value("hello-world", None).await;
-        assert_eq!(value, "Hello World [browser][pl]");
-
-        let value = loc.format_value("missing-message", None).await;
-        assert_eq!(value, "missing-message");
-
-        let value = loc.format_value("only-english", None).await;
-        assert_eq!(value, "This message is only in English [browser][en-US]");
+        for query in &[L10N_ID_PL_EN, L10N_ID_MISSING, L10N_ID_ONLY_EN] {
+            let value = loc.format_value(query.0, None).await;
+            let result = query.1.unwrap_or(query.0);
+            assert_eq!(value, result);
+        }
     }
 
     #[tokio::test]
@@ -128,41 +117,35 @@ mod tests {
     async fn localization_format_values_async() {
         let loc = setup_async_test();
 
-        let keys = vec![
-            L10nKey {
-                id: "hello-world".to_string(),
+        let ids = &[L10N_ID_PL_EN, L10N_ID_MISSING, L10N_ID_ONLY_EN];
+        let keys = ids
+            .iter()
+            .map(|query| L10nKey {
+                id: query.0.to_string(),
                 args: None,
-            },
-            L10nKey {
-                id: "missing-message".to_string(),
-                args: None,
-            },
-            L10nKey {
-                id: "only-english".to_string(),
-                args: None,
-            },
-        ];
+            })
+            .collect::<Vec<_>>();
+
         let values = loc.format_values(&keys).await;
-        assert_eq!(values.len(), 3);
-        assert_eq!(values[0], Some(Cow::Borrowed("Hello World [browser][pl]")));
-        assert_eq!(values[1], None);
-        assert_eq!(
-            values[2],
-            Some(Cow::Borrowed(
-                "This message is only in English [browser][en-US]"
-            ))
-        );
+
+        assert_eq!(values.len(), ids.len());
+
+        for (value, query) in values.iter().zip(ids) {
+            assert_eq!(value.clone(), query.1.map(|v| Cow::Borrowed(v)));
+        }
     }
 
     #[tokio::test]
     #[serial]
     async fn localization_upgrade() {
         let loc = setup_sync_test();
-        let value = loc.format_value_sync("hello-world", None);
-        assert_eq!(value, "Hello World [browser][pl]");
+        let value = loc.format_value_sync(L10N_ID_PL_EN.0, None);
+        let expected = L10N_ID_PL_EN.1.unwrap_or(L10N_ID_PL_EN.0);
+        assert_eq!(value, expected);
 
         let loc = loc.upgrade();
-        let value = loc.format_value("hello-world", None).await;
-        assert_eq!(value, "Hello World [browser][pl]");
+        let value = loc.format_value(L10N_ID_PL_EN.0, None).await;
+        let expected = L10N_ID_PL_EN.1.unwrap_or(L10N_ID_PL_EN.0);
+        assert_eq!(value, expected);
     }
 }

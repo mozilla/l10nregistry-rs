@@ -1,64 +1,66 @@
-
 use criterion::criterion_group;
 use criterion::criterion_main;
 use criterion::Criterion;
 
+use async_trait::async_trait;
+use fluent_testing::{get_scenarios, get_test_file};
+use l10nregistry::FileFetcher;
+use l10nregistry::FileSource;
+
 use l10nregistry::registry::L10nRegistry;
+use unic_langid::LanguageIdentifier;
 
-const res_ids: &[&str] = &[
-    "branding/brand.ftl",
-    "browser/branding/brandings.ftl",
-    "browser/branding/sync-brand.ftl",
-    "browser/preferences/preferences.ftl",
-    "browser/preferences/fonts.ftl",
-    "toolkit/featuregates/features.ftl",
-    "browser/preferences/addEngine.ftl",
-    "browser/preferences/blocklists.ftl",
-    "browser/preferences/clearSiteData.ftl",
-    // "browser/preferences/colors.ftl",
-    // "browser/preferences/connection.ftl",
-    // "browser/preferences/languages.ftl",
-    // "browser/preferences/permissions.ftl",
-    // "browser/preferences/selectBookmark.ftl",
-    // "browser/preferences/siteDataSettings.ftl",
-    // "browser/aboutDialog.ftl",
-    // "browser/sanitize.ftl",
-    // "toolkit/updates/history.ftl",
-    // "security/certificates/deviceManager.ftl",
-    // "security/certificates/certManager.ftl",
-];
+pub struct TestFileFetcher;
 
-fn preferences_bench(c: &mut Criterion) {
-    let locales = vec!["en-US".parse().unwrap()];
-    c.bench_function("preferences", move |b| {
-        b.iter(|| {
-            let mut reg = L10nRegistry::default();
+#[async_trait]
+impl FileFetcher for TestFileFetcher {
+    fn fetch_sync(&self, path: &str) -> std::io::Result<String> {
+        get_test_file(path)
+    }
 
-            reg.set_lang_ids(locales.clone());
-
-            let browser_fs = l10nregistry::tokio::file_source(
-                "browser".to_string(),
-                locales.clone(),
-                "./tests/resources/browser/{locale}".into(),
-                );
-            let toolkit_fs = l10nregistry::tokio::file_source(
-                "toolkit".to_string(),
-                locales.clone(),
-                "./tests/resources/toolkit/{locale}".into(),
-                );
-
-            reg.register_sources(vec![browser_fs, toolkit_fs]).unwrap();
-
-            let paths = res_ids.iter().map(|&r| r.into()).collect();
-            let mut i = reg.generate_bundles_for_lang_sync(locales[0].clone(), paths);
-
-            assert!(i.next().is_some());
-        })
-    });
+    async fn fetch(&self, path: &str) -> std::io::Result<String> {
+        get_test_file(path)
+    }
 }
 
-criterion_group!(
-    benches,
-    preferences_bench
-);
+fn preferences_bench(c: &mut Criterion) {
+    let mut group = c.benchmark_group("registry/scenarios");
+
+    for scenario in get_scenarios() {
+        let res_ids = scenario.res_ids.clone();
+
+        let locales: Vec<LanguageIdentifier> = scenario
+            .locales
+            .iter()
+            .map(|l| l.parse().unwrap())
+            .collect();
+
+        let mut reg = L10nRegistry::default();
+
+        let sources = scenario
+            .file_sources
+            .iter()
+            .map(|source| {
+                FileSource::new(
+                    source.name.clone(),
+                    source.locales.iter().map(|s| s.parse().unwrap()).collect(),
+                    source.path_scheme.clone(),
+                    TestFileFetcher,
+                )
+            })
+            .collect();
+        reg.register_sources(sources).unwrap();
+
+        group.bench_function(format!("{}/first_bundle", scenario.name), |b| {
+            b.iter(|| {
+                let mut bundles = reg.generate_bundles_sync(locales.clone(), res_ids.clone());
+                assert!(bundles.next().is_some());
+            })
+        });
+    }
+
+    group.finish();
+}
+
+criterion_group!(benches, preferences_bench);
 criterion_main!(benches);

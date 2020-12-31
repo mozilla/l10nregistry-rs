@@ -1,9 +1,21 @@
-use std::{pin::Pin, iter::Rev, ops::Range, task::{Context, Poll}};
+use std::{
+    iter::Rev,
+    ops::Range,
+    pin::Pin,
+    task::{Context, Poll},
+};
 
 use super::{L10nRegistry, L10nRegistryLocked};
-use crate::{fluent::FluentBundle, source::{RcResourceOption, ResourceStatus}};
+use crate::{
+    fluent::FluentBundle,
+    source::{RcResourceOption, ResourceStatus},
+};
 
-use futures::{ready, FutureExt, StreamExt, Stream, stream::{Collect, FuturesOrdered}};
+use futures::{
+    ready,
+    stream::{Collect, FuturesOrdered},
+    FutureExt, Stream, StreamExt,
+};
 use unic_langid::LanguageIdentifier;
 
 pub type ResourceSetStream = Collect<FuturesOrdered<ResourceStatus>, Vec<RcResourceOption>>;
@@ -79,10 +91,7 @@ impl GenerateBundles {
 impl Stream for GenerateBundles {
     type Item = FluentBundle;
 
-    fn poll_next(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Option<Self::Item>> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = &mut *self;
         // ZOMG, this is torturous...
         // Effectively this is tracking state for performing the following loop:
@@ -115,13 +124,13 @@ impl Stream for GenerateBundles {
                         let mut bundle = FluentBundle::new(&[lang_id.clone()]);
                         for res in set {
                             if let Some(res) = res {
-                            // TODO: add_resource returns `Result`
-                            // this could become a `TryStream`
-                            bundle
-                                .add_resource(res)
-                                .expect("Failed to add resource to bundle");
+                                // TODO: add_resource returns `Result`
+                                // this could become a `TryStream`
+                                bundle
+                                    .add_resource(res)
+                                    .expect("Failed to add resource to bundle");
                             } else {
-                                return None.into();
+                                continue 'inner;
                             }
                         }
                         return Some(bundle).into();
@@ -182,10 +191,7 @@ impl GenerateVec {
 impl Stream for GenerateVec {
     type Item = Vec<RcResourceOption>;
 
-    fn poll_next(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-    ) -> Poll<Option<Self::Item>> {
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = &mut *self;
         // ZOMG, this is torturous...
         // Effectively this is tracking state for performing the following loop:

@@ -2,16 +2,29 @@ use criterion::criterion_group;
 use criterion::criterion_main;
 use criterion::Criterion;
 
+use async_trait::async_trait;
 use fluent_bundle::FluentArgs;
-use fluent_bundle::FluentResource;
 use fluent_fallback::{L10nKey, SyncLocalization};
 use fluent_testing::{get_scenarios, get_test_file};
 use l10nregistry::registry::L10nRegistry;
-use std::rc::Rc;
-use unic_langid::LanguageIdentifier;
+use l10nregistry::FileFetcher;
+use l10nregistry::FileSource;
+
+pub struct TestFileFetcher;
+
+#[async_trait]
+impl FileFetcher for TestFileFetcher {
+    fn fetch_sync(&self, path: &str) -> std::io::Result<String> {
+        get_test_file(path)
+    }
+
+    async fn fetch(&self, path: &str) -> std::io::Result<String> {
+        get_test_file(path)
+    }
+}
 
 fn preferences_bench(c: &mut Criterion) {
-    let mut group = c.benchmark_group("scenarios");
+    let mut group = c.benchmark_group("localization/scenarios");
 
     for scenario in get_scenarios() {
         let res_ids = scenario.res_ids.clone();
@@ -32,25 +45,21 @@ fn preferences_bench(c: &mut Criterion) {
             })
             .collect();
 
-        let locales: Vec<LanguageIdentifier> = scenario
-            .locales
-            .iter()
-            .map(|l| l.parse().unwrap())
-            .collect();
         let mut reg = L10nRegistry::default();
 
         let sources = scenario
             .file_sources
             .iter()
             .map(|source| {
-                l10nregistry::tokio::file_source(
+                FileSource::new(
                     source.name.clone(),
                     source.locales.iter().map(|s| s.parse().unwrap()).collect(),
                     source.path_scheme.clone(),
+                    TestFileFetcher,
                 )
             })
             .collect();
-        reg.register_sources(sources);
+        reg.register_sources(sources).unwrap();
 
         group.bench_function(format!("{}/format_value_sync", scenario.name), |b| {
             b.iter(|| {

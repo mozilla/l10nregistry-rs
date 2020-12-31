@@ -127,20 +127,16 @@ impl BundleGeneratorSync for L10nRegistry {
 #[cfg(feature = "tokio")]
 mod tests {
     use super::*;
+    use crate::testing::get_test_file_source;
     use futures::StreamExt;
+
+    const FTL_RESOURCE_TOOLKIT: &str = "toolkit/global/textActions.ftl";
+    const FTL_RESOURCE_BROWSER: &str = "branding/brand.ftl";
 
     fn test_setup_registry(reg: &mut L10nRegistry) {
         let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let fs1 = crate::tokio::file_source(
-            "toolkit".to_string(),
-            vec![en_us.clone()],
-            "./tests/resources/toolkit/{locale}/".into(),
-        );
-        let fs2 = crate::tokio::file_source(
-            "browser".to_string(),
-            vec![en_us.clone()],
-            "./tests/resources/browser/{locale}/".into(),
-        );
+        let fs1 = get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+        let fs2 = get_test_file_source("browser", vec![en_us.clone()], "browser/{locale}");
 
         reg.register_sources(vec![fs1, fs2]).unwrap();
     }
@@ -164,7 +160,7 @@ mod tests {
         test_setup_registry(&mut reg);
 
         let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let resource_ids = ["browser/brand.ftl", "toolkit/menu.ftl"];
+        let resource_ids = [FTL_RESOURCE_BROWSER, FTL_RESOURCE_TOOLKIT];
         for (i, order) in permute_iter(reg.lock().len(), resource_ids.len()).enumerate() {
             let set = reg
                 .lock()
@@ -179,27 +175,26 @@ mod tests {
         }
     }
 
-    // #[tokio::test]
-    // async fn generate_resource_set_async() {
-    //     let mut reg = L10nRegistry::default();
-    //     test_setup_registry(&mut reg);
+    #[tokio::test]
+    async fn generate_resource_set_async() {
+        let mut reg = L10nRegistry::default();
+        test_setup_registry(&mut reg);
 
-    //     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-    //     let resource_ids = ["browser/brand.ftl", "toolkit/menu.ftl"];
-    //     for (i, order) in permute_iter(reg.lock().len(), resource_ids.len()).enumerate() {
-    //         let set = reg
-    //             .lock()
-    //             .generate_resource_set(&en_us, &order, &resource_ids)
-    //             .await;
-    //         if i == 1 {
-    //             assert!(set.is_some());
-    //             let set = set.unwrap();
-    //             assert_eq!(set.len(), 2);
-    //         } else {
-    //             assert!(set.is_none());
-    //         }
-    //     }
-    // }
+        let en_us: LanguageIdentifier = "en-US".parse().unwrap();
+        let resource_ids = [FTL_RESOURCE_BROWSER, FTL_RESOURCE_TOOLKIT];
+        for (i, order) in permute_iter(reg.lock().len(), resource_ids.len()).enumerate() {
+            let set = reg
+                .lock()
+                .generate_resource_set(&en_us, &order, &resource_ids)
+                .await;
+            if i == 1 {
+                assert!(set[0].is_some());
+                assert!(set[1].is_some());
+            } else {
+                assert!(set.iter().find(|b| b.is_none()).is_some());
+            }
+        }
+    }
 
     #[tokio::test]
     async fn generate_vec() {
@@ -207,8 +202,12 @@ mod tests {
         test_setup_registry(&mut reg);
 
         let en_us: Vec<LanguageIdentifier> = vec!["en-US".parse().unwrap()];
-        let resource_ids = vec!["browser/brand.ftl".to_string(), "toolkit/menu.ftl".to_string()];
-        let mut gen = GenerateVec::new(reg, en_us, resource_ids);
+        let resource_ids = [FTL_RESOURCE_BROWSER, FTL_RESOURCE_TOOLKIT];
+        let mut gen = GenerateVec::new(
+            reg,
+            en_us,
+            resource_ids.iter().map(|r| r.to_string()).collect(),
+        );
         let xx = gen.next().await.unwrap();
         assert!(!xx.iter().all(Option::is_some));
         let xx = gen.next().await.unwrap();
