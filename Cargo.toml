@@ -35,6 +35,10 @@ harness = false
 name = "localization"
 harness = false
 
+[[bench]]
+name = "solver"
+harness = false
+
 [[test]]
 name = "source"
 path = "tests/source.rs"

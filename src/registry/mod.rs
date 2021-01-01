@@ -24,7 +24,7 @@ pub type FluentResourceSet = Vec<Rc<FluentResource>>;
 /// Generate a permutation of all registered source file indices for `length`
 /// in reverse order. ie. The last source added to the registry with `add_source`
 /// is returned first.
-pub(crate) fn permute_iter(
+pub fn permute_iter(
     source_count: usize,
     length: usize,
 ) -> itertools::MultiProduct<Rev<Range<usize>>> {
