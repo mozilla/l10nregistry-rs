@@ -5,7 +5,7 @@ use criterion::Criterion;
 use async_trait::async_trait;
 use fluent_bundle::FluentArgs;
 use fluent_fallback::{L10nKey, SyncLocalization};
-use fluent_testing::{get_scenarios, get_test_file};
+use fluent_testing::get_scenarios;
 use l10nregistry::registry::L10nRegistry;
 use l10nregistry::FileFetcher;
 use l10nregistry::FileSource;
@@ -15,11 +15,11 @@ pub struct TestFileFetcher;
 #[async_trait]
 impl FileFetcher for TestFileFetcher {
     fn fetch_sync(&self, path: &str) -> std::io::Result<String> {
-        get_test_file(path)
+        fluent_testing::get_test_file_sync(path)
     }
 
     async fn fetch(&self, path: &str) -> std::io::Result<String> {
-        get_test_file(path)
+        fluent_testing::get_test_file_async(path).await
     }
 }
 
