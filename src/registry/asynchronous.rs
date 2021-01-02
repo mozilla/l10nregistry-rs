@@ -8,17 +8,17 @@ use std::{
 use super::{L10nRegistry, L10nRegistryLocked};
 use crate::{
     fluent::FluentBundle,
-    source::{RcResourceOption, ResourceStatus},
+    source::{ResourceOption, ResourceStatus},
 };
 
 use futures::{
     ready,
     stream::{Collect, FuturesOrdered},
-    FutureExt, Stream, StreamExt,
+    Stream, StreamExt, FutureExt,
 };
 use unic_langid::LanguageIdentifier;
 
-pub type ResourceSetStream = Collect<FuturesOrdered<ResourceStatus>, Vec<RcResourceOption>>;
+pub type ResourceSetStream = Collect<FuturesOrdered<ResourceStatus>, Vec<ResourceOption>>;
 
 impl<'a> L10nRegistryLocked<'a> {
     pub(crate) fn generate_resource_set<P>(
@@ -189,7 +189,7 @@ impl GenerateVec {
 }
 
 impl Stream for GenerateVec {
-    type Item = Vec<RcResourceOption>;
+    type Item = Vec<ResourceOption>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = &mut *self;

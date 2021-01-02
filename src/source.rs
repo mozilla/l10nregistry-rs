@@ -30,9 +30,8 @@ impl From<String> for ResourceResult {
     }
 }
 
-pub type RcResource = ResourceResult;
-pub type RcResourceOption = Option<RcResource>;
-pub type ResourceFuture = Shared<Pin<Box<dyn Future<Output = RcResourceOption>>>>;
+pub type ResourceOption = Option<ResourceResult>;
+pub type ResourceFuture = Shared<Pin<Box<dyn Future<Output = ResourceOption>>>>;
 
 #[derive(Debug, Clone)]
 pub enum ResourceStatus {
@@ -41,11 +40,11 @@ pub enum ResourceStatus {
     /// The resource is loading and future will deliver the result.
     Loading(ResourceFuture),
     /// The resource is loaded and parsed.
-    Loaded(RcResource),
+    Loaded(ResourceResult),
 }
 
-impl From<RcResourceOption> for ResourceStatus {
-    fn from(input: RcResourceOption) -> Self {
+impl From<ResourceOption> for ResourceStatus {
+    fn from(input: ResourceOption) -> Self {
         if let Some(res) = input {
             Self::Loaded(res)
         } else {
@@ -55,7 +54,7 @@ impl From<RcResourceOption> for ResourceStatus {
 }
 
 impl Future for ResourceStatus {
-    type Output = RcResourceOption;
+    type Output = ResourceOption;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
         use ResourceStatus::*;
@@ -134,7 +133,7 @@ impl FileSource {
         )
     }
 
-    fn fetch_sync(&self, full_path: &str) -> RcResourceOption {
+    fn fetch_sync(&self, full_path: &str) -> ResourceOption {
         self.shared
             .fetcher
             .fetch_sync(full_path)
@@ -143,9 +142,9 @@ impl FileSource {
     }
 
     /// Attempt to synchronously fetch resource for the combination of `langid`
-    /// and `path`. Returns `Some(RcResource)` if the resource is available,
+    /// and `path`. Returns `Some(ResourceResult)` if the resource is available,
     /// else `None`.
-    pub fn fetch_file_sync(&self, langid: &LanguageIdentifier, path: &str) -> RcResourceOption {
+    pub fn fetch_file_sync(&self, langid: &LanguageIdentifier, path: &str) -> ResourceOption {
         use ResourceStatus::*;
 
         let full_path = self.get_path(langid, &path);
@@ -230,7 +229,7 @@ impl Inner {
         lock.entry(path).or_insert_with(|| f()).clone()
     }
 
-    fn update_resource(&self, path: String, resource: RcResourceOption) -> RcResourceOption {
+    fn update_resource(&self, path: String, resource: ResourceOption) -> ResourceOption {
         let mut lock = self.entries.borrow_mut();
         let entry = lock.get_mut(&path);
         match entry {
@@ -249,7 +248,7 @@ impl Inner {
     }
 }
 
-async fn read_resource(path: String, shared: Rc<Inner>) -> RcResourceOption {
+async fn read_resource(path: String, shared: Rc<Inner>) -> ResourceOption {
     let resource =
         shared.fetcher.fetch(&path).await.ok().map(|source| {
             source.into()
