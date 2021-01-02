@@ -15,7 +15,7 @@ pub use source::FileSource;
 /// into `FluentResource`.
 ///
 /// [`FileSource`]: source/struct.FileSource.html
-#[async_trait]
+#[async_trait(?Send)]
 pub trait FileFetcher {
     /// Return the `String` representation for `path`. This version is
     /// blocking.

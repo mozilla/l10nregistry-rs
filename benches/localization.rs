@@ -2,28 +2,14 @@ use criterion::criterion_group;
 use criterion::criterion_main;
 use criterion::Criterion;
 
-use async_trait::async_trait;
 use fluent_bundle::FluentArgs;
 use fluent_fallback::{L10nKey, SyncLocalization};
 use fluent_testing::get_scenarios;
-use l10nregistry::registry::L10nRegistry;
-use l10nregistry::FileFetcher;
-use l10nregistry::FileSource;
-
-pub struct TestFileFetcher;
-
-#[async_trait]
-impl FileFetcher for TestFileFetcher {
-    fn fetch_sync(&self, path: &str) -> std::io::Result<String> {
-        fluent_testing::get_test_file_sync(path)
-    }
-
-    async fn fetch(&self, path: &str) -> std::io::Result<String> {
-        fluent_testing::get_test_file_async(path).await
-    }
-}
+use l10nregistry::testing::TestFileFetcher;
 
 fn preferences_bench(c: &mut Criterion) {
+    let fetcher = TestFileFetcher::new();
+
     let mut group = c.benchmark_group("localization/scenarios");
 
     for scenario in get_scenarios() {
@@ -45,24 +31,11 @@ fn preferences_bench(c: &mut Criterion) {
             })
             .collect();
 
-        let mut reg = L10nRegistry::default();
-
-        let sources = scenario
-            .file_sources
-            .iter()
-            .map(|source| {
-                FileSource::new(
-                    source.name.clone(),
-                    source.locales.iter().map(|s| s.parse().unwrap()).collect(),
-                    source.path_scheme.clone(),
-                    TestFileFetcher,
-                )
-            })
-            .collect();
-        reg.register_sources(sources).unwrap();
 
         group.bench_function(format!("{}/format_value_sync", scenario.name), |b| {
             b.iter(|| {
+                let reg = fetcher.get_registry(&scenario);
+
                 let loc = SyncLocalization::with_generator(res_ids.clone(), reg.clone());
                 for key in l10n_keys.iter() {
                     loc.format_value_sync(&key.0, key.1.as_ref());
@@ -79,6 +52,7 @@ fn preferences_bench(c: &mut Criterion) {
             .collect();
         group.bench_function(format!("{}/format_messages_sync", scenario.name), |b| {
             b.iter(|| {
+                let reg = fetcher.get_registry(&scenario);
                 let loc = SyncLocalization::with_generator(res_ids.clone(), reg.clone());
                 loc.format_messages_sync(&keys);
             })

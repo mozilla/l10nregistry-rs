@@ -1,24 +1,61 @@
 use crate::{FileFetcher, FileSource};
 use async_trait::async_trait;
 use unic_langid::LanguageIdentifier;
+use fluent_testing::MockFileSystem;
+use std::rc::Rc;
+use crate::registry::L10nRegistry;
 
-pub struct TestFileFetcher;
+#[derive(Default)]
+struct InnerFileFetcher {
+    fs: MockFileSystem,
+}
 
-#[async_trait]
-impl FileFetcher for TestFileFetcher {
-    fn fetch_sync(&self, path: &str) -> std::io::Result<String> {
-        fluent_testing::get_test_file_sync(path)
+#[derive(Clone)]
+pub struct TestFileFetcher {
+    inner: Rc<InnerFileFetcher>,
+}
+
+impl TestFileFetcher {
+    pub fn new() -> Self {
+        Self {
+            inner: Rc::new(InnerFileFetcher::default())
+        }
     }
 
-    async fn fetch(&self, path: &str) -> std::io::Result<String> {
-        fluent_testing::get_test_file_async(path).await
+    pub fn get_test_file_source(
+        &self,
+        name: &str,
+        locales: Vec<LanguageIdentifier>,
+        path: &str,
+    ) -> FileSource {
+        FileSource::new(name.to_string(), locales, path.to_string(), self.clone())
+    }
+
+    pub fn get_registry(&self, scenario: &fluent_testing::scenarios::structs::Scenario) -> L10nRegistry {
+        let mut reg = L10nRegistry::default();
+        let sources = scenario
+            .file_sources
+            .iter()
+            .map(|source| {
+                self.get_test_file_source(
+                    &source.name,
+                    source.locales.iter().map(|s| s.parse().unwrap()).collect(),
+                    &source.path_scheme,
+                    )
+            })
+        .collect();
+        reg.register_sources(sources).unwrap();
+        reg
     }
 }
 
-pub fn get_test_file_source(
-    name: &str,
-    locales: Vec<LanguageIdentifier>,
-    path: &str,
-) -> FileSource {
-    FileSource::new(name.to_string(), locales, path.to_string(), TestFileFetcher)
+#[async_trait(?Send)]
+impl FileFetcher for TestFileFetcher {
+    fn fetch_sync(&self, path: &str) -> std::io::Result<String> {
+        self.inner.fs.get_test_file_sync(path)
+    }
+
+    async fn fetch(&self, path: &str) -> std::io::Result<String> {
+        self.inner.fs.get_test_file_async(path).await
+    }
 }
