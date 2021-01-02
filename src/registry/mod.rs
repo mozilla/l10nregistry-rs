@@ -16,7 +16,7 @@ use fluent_fallback::{BundleGenerator, BundleGeneratorSync};
 use itertools::Itertools;
 use unic_langid::LanguageIdentifier;
 
-pub use asynchronous::{GenerateBundles, GenerateVec};
+pub use asynchronous::GenerateBundles;
 pub use synchronous::GenerateBundlesSync;
 
 pub type FluentResourceSet = Vec<Rc<FluentResource>>;
@@ -120,107 +120,5 @@ impl BundleGeneratorSync for L10nRegistry {
 
     fn bundles_sync(&self, resource_ids: Vec<String>) -> Self::Iter {
         self.generate_bundles_sync(self.shared.lang_ids.clone(), resource_ids)
-    }
-}
-
-#[cfg(test)]
-#[cfg(feature = "tokio")]
-mod tests {
-    use super::*;
-    use crate::testing::TestFileFetcher;
-    use futures::StreamExt;
-
-    const FTL_RESOURCE_TOOLKIT: &str = "toolkit/global/textActions.ftl";
-    const FTL_RESOURCE_BROWSER: &str = "branding/brand.ftl";
-
-    fn test_setup_registry(reg: &mut L10nRegistry, fetcher: &TestFileFetcher) {
-        let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
-        let fs2 = fetcher.get_test_file_source("browser", vec![en_us.clone()], "browser/{locale}");
-
-        reg.register_sources(vec![fs1, fs2]).unwrap();
-    }
-
-    #[test]
-    fn permutations() {
-        let fetcher = TestFileFetcher::new();
-        let mut reg = L10nRegistry::default();
-        test_setup_registry(&mut reg, &fetcher);
-
-        let mut iter = permute_iter(reg.lock().len(), 2);
-        assert_eq!(iter.next(), Some(vec![1, 1]));
-        assert_eq!(iter.next(), Some(vec![1, 0]));
-        assert_eq!(iter.next(), Some(vec![0, 1]));
-        assert_eq!(iter.next(), Some(vec![0, 0]));
-        assert_eq!(iter.next(), None);
-    }
-
-    #[test]
-    fn generate_resource_set_sync() {
-        let fetcher = TestFileFetcher::new();
-        let mut reg = L10nRegistry::default();
-        test_setup_registry(&mut reg, &fetcher);
-
-        let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let resource_ids = [FTL_RESOURCE_BROWSER, FTL_RESOURCE_TOOLKIT];
-        for (i, order) in permute_iter(reg.lock().len(), resource_ids.len()).enumerate() {
-            let set = reg
-                .lock()
-                .generate_resource_set_sync(&en_us, &order, &resource_ids);
-            if i == 1 {
-                assert!(set.is_some());
-                let set = set.unwrap();
-                assert_eq!(set.len(), 2);
-            } else {
-                assert!(set.is_none());
-            }
-        }
-    }
-
-    #[tokio::test]
-    async fn generate_resource_set_async() {
-        let fetcher = TestFileFetcher::new();
-        let mut reg = L10nRegistry::default();
-        test_setup_registry(&mut reg, &fetcher);
-
-        let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let resource_ids = [FTL_RESOURCE_BROWSER, FTL_RESOURCE_TOOLKIT];
-        for (i, order) in permute_iter(reg.lock().len(), resource_ids.len()).enumerate() {
-            let set = reg
-                .lock()
-                .generate_resource_set(&en_us, &order, &resource_ids)
-                .await;
-            if i == 1 {
-                assert!(set[0].is_some());
-                assert!(set[1].is_some());
-            } else {
-                assert!(set.iter().find(|b| b.is_none()).is_some());
-            }
-        }
-    }
-
-    #[tokio::test]
-    async fn generate_vec() {
-        let fetcher = TestFileFetcher::new();
-        let mut reg = L10nRegistry::default();
-        test_setup_registry(&mut reg, &fetcher);
-
-        let en_us: Vec<LanguageIdentifier> = vec!["en-US".parse().unwrap()];
-        let resource_ids = [FTL_RESOURCE_BROWSER, FTL_RESOURCE_TOOLKIT];
-        let mut gen = GenerateVec::new(
-            reg,
-            en_us,
-            resource_ids.iter().map(|r| r.to_string()).collect(),
-        );
-        let xx = gen.next().await.unwrap();
-        assert!(!xx.iter().all(Option::is_some));
-        let xx = gen.next().await.unwrap();
-        assert!(xx.iter().all(Option::is_some));
-        let xx = gen.next().await.unwrap();
-        assert!(!xx.iter().all(Option::is_some));
-        let xx = gen.next().await.unwrap();
-        assert!(!xx.iter().all(Option::is_some));
-        let xx = gen.next().await;
-        assert!(xx.is_none());
     }
 }
