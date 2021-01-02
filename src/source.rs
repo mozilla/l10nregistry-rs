@@ -248,15 +248,16 @@ async fn read_resource(path: String, shared: Rc<Inner>) -> RcResourceOption {
 #[cfg(feature = "tokio")]
 mod tests {
     use super::*;
-    use crate::testing::get_test_file_source;
+    use crate::testing::TestFileFetcher;
 
     const FTL_RESOURCE_PRESENT: &str = "toolkit/global/textActions.ftl";
     const FTL_RESOURCE_MISSING: &str = "missing.ftl";
 
     #[tokio::test]
     async fn file_source_fetch() {
+        let fetcher = TestFileFetcher::new();
         let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let fs1 = get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+        let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
 
         let file = fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT).await;
         assert!(file.is_some());
@@ -264,8 +265,9 @@ mod tests {
 
     #[tokio::test]
     async fn file_source_fetch_missing() {
+        let fetcher = TestFileFetcher::new();
         let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let fs1 = get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+        let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
 
         let file = fs1.fetch_file(&en_us, FTL_RESOURCE_MISSING).await;
         assert!(file.is_none());
@@ -273,8 +275,9 @@ mod tests {
 
     #[tokio::test]
     async fn file_source_already_loaded() {
+        let fetcher = TestFileFetcher::new();
         let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let fs1 = get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+        let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
 
         let file = fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT).await;
         assert!(file.is_some());
@@ -284,8 +287,9 @@ mod tests {
 
     #[tokio::test]
     async fn file_source_concurrent() {
+        let fetcher = TestFileFetcher::new();
         let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let fs1 = get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+        let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
 
         let file1 = fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT);
         let file2 = fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT);
@@ -295,8 +299,9 @@ mod tests {
 
     #[test]
     fn file_source_sync_after_async_fail() {
+        let fetcher = TestFileFetcher::new();
         let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let fs1 = get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+        let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
 
         let _ = fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT);
         let file2 = fs1.fetch_file_sync(&en_us, FTL_RESOURCE_PRESENT);

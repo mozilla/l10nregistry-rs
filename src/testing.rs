@@ -1,9 +1,9 @@
+use crate::registry::L10nRegistry;
 use crate::{FileFetcher, FileSource};
 use async_trait::async_trait;
-use unic_langid::LanguageIdentifier;
 use fluent_testing::MockFileSystem;
 use std::rc::Rc;
-use crate::registry::L10nRegistry;
+use unic_langid::LanguageIdentifier;
 
 #[derive(Default)]
 struct InnerFileFetcher {
@@ -18,7 +18,7 @@ pub struct TestFileFetcher {
 impl TestFileFetcher {
     pub fn new() -> Self {
         Self {
-            inner: Rc::new(InnerFileFetcher::default())
+            inner: Rc::new(InnerFileFetcher::default()),
         }
     }
 
@@ -31,7 +31,10 @@ impl TestFileFetcher {
         FileSource::new(name.to_string(), locales, path.to_string(), self.clone())
     }
 
-    pub fn get_registry(&self, scenario: &fluent_testing::scenarios::structs::Scenario) -> L10nRegistry {
+    pub fn get_registry(
+        &self,
+        scenario: &fluent_testing::scenarios::structs::Scenario,
+    ) -> L10nRegistry {
         let locales: Vec<LanguageIdentifier> = scenario
             .locales
             .iter()
@@ -47,9 +50,9 @@ impl TestFileFetcher {
                     &source.name,
                     source.locales.iter().map(|s| s.parse().unwrap()).collect(),
                     &source.path_scheme,
-                    )
+                )
             })
-        .collect();
+            .collect();
         reg.register_sources(sources).unwrap();
         reg.set_lang_ids(locales);
         reg

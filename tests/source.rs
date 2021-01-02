@@ -1,5 +1,5 @@
 use futures::future::join_all;
-use l10nregistry::testing::get_test_file_source;
+use l10nregistry::testing::TestFileFetcher;
 use unic_langid::LanguageIdentifier;
 
 const FTL_RESOURCE_PRESENT: &str = "toolkit/global/textActions.ftl";
@@ -7,9 +7,10 @@ const FTL_RESOURCE_MISSING: &str = "missing.ftl";
 
 #[test]
 fn test_fetch_sync() {
+    let fetcher = TestFileFetcher::new();
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
 
-    let fs1 = get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
 
     assert!(fs1.fetch_file_sync(&en_us, FTL_RESOURCE_PRESENT).is_some());
     assert!(fs1.fetch_file_sync(&en_us, FTL_RESOURCE_MISSING).is_none());
@@ -17,9 +18,10 @@ fn test_fetch_sync() {
 
 #[tokio::test]
 async fn test_fetch_async() {
+    let fetcher = TestFileFetcher::new();
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
 
-    let fs1 = get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
 
     assert!(fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT).await.is_some());
     assert!(fs1.fetch_file(&en_us, FTL_RESOURCE_MISSING).await.is_none());
@@ -28,9 +30,10 @@ async fn test_fetch_async() {
 
 #[tokio::test]
 async fn test_fetch_sync_2_async() {
+    let fetcher = TestFileFetcher::new();
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
 
-    let fs1 = get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
 
     assert!(fs1.fetch_file_sync(&en_us, FTL_RESOURCE_PRESENT).is_some());
     assert!(fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT).await.is_some());
@@ -39,9 +42,10 @@ async fn test_fetch_sync_2_async() {
 
 #[tokio::test]
 async fn test_fetch_async_2_sync() {
+    let fetcher = TestFileFetcher::new();
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
 
-    let fs1 = get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
 
     assert!(fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT).await.is_some());
     assert!(fs1.fetch_file_sync(&en_us, FTL_RESOURCE_PRESENT).is_some());
@@ -49,11 +53,12 @@ async fn test_fetch_async_2_sync() {
 
 #[test]
 fn test_fetch_has_value_sync() {
+    let fetcher = TestFileFetcher::new();
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
     let path = FTL_RESOURCE_PRESENT;
     let path_missing = FTL_RESOURCE_MISSING;
 
-    let fs1 = get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
 
     assert_eq!(fs1.has_file(&en_us, path), None);
     assert!(fs1.fetch_file_sync(&en_us, path).is_some());
@@ -66,11 +71,12 @@ fn test_fetch_has_value_sync() {
 
 #[tokio::test]
 async fn test_fetch_has_value_async() {
+    let fetcher = TestFileFetcher::new();
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
     let path = FTL_RESOURCE_PRESENT;
     let path_missing = FTL_RESOURCE_MISSING;
 
-    let fs1 = get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
 
     assert_eq!(fs1.has_file(&en_us, path), None);
     assert!(fs1.fetch_file(&en_us, path).await.is_some());
@@ -85,9 +91,10 @@ async fn test_fetch_has_value_async() {
 
 #[tokio::test]
 async fn test_fetch_async_consequitive() {
+    let fetcher = TestFileFetcher::new();
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
 
-    let fs1 = get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
 
     let results = join_all(vec![
         fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT),

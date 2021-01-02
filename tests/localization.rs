@@ -2,11 +2,12 @@ use std::borrow::Cow;
 
 use fluent_fallback::{AsyncLocalization, L10nKey, SyncLocalization};
 use l10nregistry::registry::L10nRegistry;
-use l10nregistry::testing::get_test_file_source;
+use l10nregistry::testing::TestFileFetcher;
 use serial_test::serial;
 use unic_langid::{langid, LanguageIdentifier};
 
 static LOCALES: &[LanguageIdentifier] = &[langid!("pl"), langid!("en-US")];
+static mut FILE_FETCHER: Option<TestFileFetcher> = None;
 static mut L10N_REGISTRY: Option<L10nRegistry> = None;
 
 const FTL_RESOURCE: &str = "toolkit/updates/history.ftl";
@@ -17,18 +18,26 @@ const L10N_ID_ONLY_EN: (&str, Option<&str>) = (
     Some("The following updates have been installed"),
 );
 
+fn get_file_fetcher() -> &'static TestFileFetcher {
+    let fetcher: &mut Option<TestFileFetcher> = unsafe { &mut FILE_FETCHER };
+
+    fetcher.get_or_insert_with(|| TestFileFetcher::new())
+}
+
 fn get_l10n_registry() -> &'static L10nRegistry {
     let reg: &mut Option<L10nRegistry> = unsafe { &mut L10N_REGISTRY };
 
     reg.get_or_insert_with(|| {
+        let fetcher = get_file_fetcher();
+
         let mut reg = L10nRegistry::default();
 
         reg.set_lang_ids(get_app_locales().to_vec());
 
         let toolkit_fs =
-            get_test_file_source("toolkit", get_app_locales().to_vec(), "toolkit/{locale}");
+            fetcher.get_test_file_source("toolkit", get_app_locales().to_vec(), "toolkit/{locale}");
         let browser_fs =
-            get_test_file_source("browser", get_app_locales().to_vec(), "browser/{locale}");
+            fetcher.get_test_file_source("browser", get_app_locales().to_vec(), "browser/{locale}");
 
         reg.register_sources(vec![browser_fs, toolkit_fs]).unwrap();
         reg

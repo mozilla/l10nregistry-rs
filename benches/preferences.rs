@@ -35,7 +35,7 @@ fn preferences_bench(c: &mut Criterion) {
 
             let rt = tokio::runtime::Runtime::new().unwrap();
 
-            group.bench_function(&format!("{}/async/first_bundle", scenario.name), move |b| {
+            group.bench_function(&format!("{}/async/first_bundle", scenario.name), |b| {
                 b.iter(|| {
                     rt.block_on(async {
                         let reg = fetcher.get_registry(&scenario);

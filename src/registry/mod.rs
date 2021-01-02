@@ -127,24 +127,25 @@ impl BundleGeneratorSync for L10nRegistry {
 #[cfg(feature = "tokio")]
 mod tests {
     use super::*;
-    use crate::testing::get_test_file_source;
+    use crate::testing::TestFileFetcher;
     use futures::StreamExt;
 
     const FTL_RESOURCE_TOOLKIT: &str = "toolkit/global/textActions.ftl";
     const FTL_RESOURCE_BROWSER: &str = "branding/brand.ftl";
 
-    fn test_setup_registry(reg: &mut L10nRegistry) {
+    fn test_setup_registry(reg: &mut L10nRegistry, fetcher: &TestFileFetcher) {
         let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let fs1 = get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
-        let fs2 = get_test_file_source("browser", vec![en_us.clone()], "browser/{locale}");
+        let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+        let fs2 = fetcher.get_test_file_source("browser", vec![en_us.clone()], "browser/{locale}");
 
         reg.register_sources(vec![fs1, fs2]).unwrap();
     }
 
     #[test]
     fn permutations() {
+        let fetcher = TestFileFetcher::new();
         let mut reg = L10nRegistry::default();
-        test_setup_registry(&mut reg);
+        test_setup_registry(&mut reg, &fetcher);
 
         let mut iter = permute_iter(reg.lock().len(), 2);
         assert_eq!(iter.next(), Some(vec![1, 1]));
@@ -156,8 +157,9 @@ mod tests {
 
     #[test]
     fn generate_resource_set_sync() {
+        let fetcher = TestFileFetcher::new();
         let mut reg = L10nRegistry::default();
-        test_setup_registry(&mut reg);
+        test_setup_registry(&mut reg, &fetcher);
 
         let en_us: LanguageIdentifier = "en-US".parse().unwrap();
         let resource_ids = [FTL_RESOURCE_BROWSER, FTL_RESOURCE_TOOLKIT];
@@ -177,8 +179,9 @@ mod tests {
 
     #[tokio::test]
     async fn generate_resource_set_async() {
+        let fetcher = TestFileFetcher::new();
         let mut reg = L10nRegistry::default();
-        test_setup_registry(&mut reg);
+        test_setup_registry(&mut reg, &fetcher);
 
         let en_us: LanguageIdentifier = "en-US".parse().unwrap();
         let resource_ids = [FTL_RESOURCE_BROWSER, FTL_RESOURCE_TOOLKIT];
@@ -198,8 +201,9 @@ mod tests {
 
     #[tokio::test]
     async fn generate_vec() {
+        let fetcher = TestFileFetcher::new();
         let mut reg = L10nRegistry::default();
-        test_setup_registry(&mut reg);
+        test_setup_registry(&mut reg, &fetcher);
 
         let en_us: Vec<LanguageIdentifier> = vec!["en-US".parse().unwrap()];
         let resource_ids = [FTL_RESOURCE_BROWSER, FTL_RESOURCE_TOOLKIT];

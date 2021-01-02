@@ -31,7 +31,6 @@ fn preferences_bench(c: &mut Criterion) {
             })
             .collect();
 
-
         group.bench_function(format!("{}/format_value_sync", scenario.name), |b| {
             b.iter(|| {
                 let reg = fetcher.get_registry(&scenario);
