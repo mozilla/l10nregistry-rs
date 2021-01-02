@@ -25,7 +25,7 @@ impl<'a> L10nRegistryLocked<'a> {
         {
             let source = self.source_idx(idx);
             if let Some(resource) = source.fetch_file_sync(langid, path) {
-                result.push(resource)
+                result.push(resource.res)
             } else {
                 return None;
             }
@@ -91,7 +91,7 @@ impl Iterator for GenerateBundlesSync {
                         &source_order,
                         &self.resource_ids,
                     ) {
-                        let mut bundle = FluentBundle::new(&[langid.clone()]);
+                        let mut bundle = FluentBundle::new(vec![langid.clone()]);
                         for res in set {
                             bundle.add_resource(res).unwrap()
                         }

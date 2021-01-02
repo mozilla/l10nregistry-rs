@@ -121,13 +121,13 @@ impl Stream for GenerateBundles {
                         let set = ready!(fut.poll_unpin(cx));
                         let _ = resource_set.take(); // A result is ready, clear the future.
                                                      // Construct Bundle from the Resources in the set.
-                        let mut bundle = FluentBundle::new(&[lang_id.clone()]);
+                        let mut bundle = FluentBundle::new(vec![lang_id.clone()]);
                         for res in set {
                             if let Some(res) = res {
                                 // TODO: add_resource returns `Result`
                                 // this could become a `TryStream`
                                 bundle
-                                    .add_resource(res)
+                                    .add_resource(res.res)
                                     .expect("Failed to add resource to bundle");
                             } else {
                                 continue 'inner;

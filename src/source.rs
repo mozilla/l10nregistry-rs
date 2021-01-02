@@ -1,4 +1,4 @@
-use crate::{fluent::FluentResource, FileFetcher};
+use crate::{fluent::{FluentResource, FluentError}, FileFetcher};
 
 use std::{
     borrow::Borrow,
@@ -15,7 +15,22 @@ use futures::{future::Shared, Future, FutureExt};
 use log::{trace, warn};
 use unic_langid::LanguageIdentifier;
 
-pub type RcResource = Rc<FluentResource>;
+#[derive(Debug, Clone)]
+pub struct ResourceResult {
+    pub res: Rc<FluentResource>,
+    pub errors: Vec<FluentError>,
+}
+
+impl From<String> for ResourceResult {
+    fn from(source: String) -> Self {
+        match FluentResource::try_new(source) {
+            Ok(res) => ResourceResult { res: Rc::new(res), errors: vec![] },
+            Err((res, errors)) => ResourceResult { res: Rc::new(res), errors: errors.into_iter().map(Into::into).collect() },
+        }
+    }
+}
+
+pub type RcResource = ResourceResult;
 pub type RcResourceOption = Option<RcResource>;
 pub type ResourceFuture = Shared<Pin<Box<dyn Future<Output = RcResourceOption>>>>;
 
@@ -124,8 +139,7 @@ impl FileSource {
             .fetcher
             .fetch_sync(full_path)
             .ok()
-            .and_then(|source| FluentResource::try_new(source).ok())
-            .map(Rc::new)
+            .map(|source| source.into())
     }
 
     /// Attempt to synchronously fetch resource for the combination of `langid`
@@ -238,7 +252,7 @@ impl Inner {
 async fn read_resource(path: String, shared: Rc<Inner>) -> RcResourceOption {
     let resource =
         shared.fetcher.fetch(&path).await.ok().map(|source| {
-            Rc::new(FluentResource::try_new(source).expect("Failed to parse source"))
+            source.into()
         });
     // insert the resource into the cache
     shared.update_resource(path, resource)
