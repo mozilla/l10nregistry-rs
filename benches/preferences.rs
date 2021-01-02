@@ -51,12 +51,44 @@ fn preferences_bench(c: &mut Criterion) {
             .collect();
         reg.register_sources(sources).unwrap();
 
-        group.bench_function(format!("{}/first_bundle", scenario.name), |b| {
+        group.bench_function(format!("{}/sync/first_bundle", scenario.name), |b| {
             b.iter(|| {
                 let mut bundles = reg.generate_bundles_sync(locales.clone(), res_ids.clone());
                 assert!(bundles.next().is_some());
             })
         });
+
+        #[cfg(feature = "tokio")]
+        {
+            use futures::stream::StreamExt;
+
+            let mut reg = L10nRegistry::default();
+
+            let sources = scenario
+                .file_sources
+                .iter()
+                .map(|source| {
+                    FileSource::new(
+                        source.name.clone(),
+                        source.locales.iter().map(|s| s.parse().unwrap()).collect(),
+                        source.path_scheme.clone(),
+                        TestFileFetcher,
+                    )
+                })
+                .collect();
+            reg.register_sources(sources).unwrap();
+
+            let rt = tokio::runtime::Runtime::new().unwrap();
+
+            group.bench_function(&format!("{}/async/first_bundle", scenario.name), move |b| {
+                b.iter(|| {
+                    rt.block_on(async {
+                        let mut bundles = reg.generate_bundles(locales.clone(), res_ids.clone());
+                        assert!(bundles.next().await.is_some());
+                    });
+                })
+            });
+        }
     }
 
     group.finish();
