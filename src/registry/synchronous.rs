@@ -1,36 +1,36 @@
-use std::{iter::Rev, ops::Range, rc::Rc};
-
 use super::{L10nRegistry, L10nRegistryLocked};
-use crate::fluent::{FluentBundle, FluentResource};
+use crate::fluent::{FluentBundle, FluentError};
+use crate::solver::{SerialProblemSolver, SyncTester};
 
 use unic_langid::LanguageIdentifier;
 
-pub type FluentResourceSet = Vec<Rc<FluentResource>>;
-
 impl<'a> L10nRegistryLocked<'a> {
-    pub(crate) fn generate_resource_set_sync<P>(
+    pub(crate) fn bundle_from_order(
         &self,
-        langid: &LanguageIdentifier,
+        locale: LanguageIdentifier,
         source_order: &[usize],
-        resource_ids: &[P],
-    ) -> Option<FluentResourceSet>
-    where
-        P: AsRef<str>,
-    {
-        debug_assert_eq!(source_order.len(), resource_ids.len());
-        let mut result = vec![];
-        for (&idx, path) in source_order
-            .iter()
-            .zip(resource_ids.iter().map(AsRef::as_ref))
-        {
-            let source = self.source_idx(idx);
-            if let Some(resource) = source.fetch_file_sync(langid, path) {
-                result.push(resource.res)
+        res_ids: &[String],
+    ) -> Option<Result<FluentBundle, (FluentBundle, Vec<FluentError>)>> {
+        let mut bundle = FluentBundle::new(vec![locale.clone()]);
+
+        let mut errors = vec![];
+
+        for (&source_idx, path) in source_order.iter().zip(res_ids.iter()) {
+            let source = self.source_idx(source_idx);
+            if let Some(res) = source.fetch_file_sync(&locale, path) {
+                if let Err(err) = bundle.add_resource(res.res) {
+                    errors.extend(err);
+                }
             } else {
                 return None;
             }
         }
-        Some(result)
+
+        if errors.is_empty() {
+            Some(Ok(bundle))
+        } else {
+            Some(Err((bundle, errors)))
+        }
     }
 }
 
@@ -54,55 +54,101 @@ impl L10nRegistry {
     }
 }
 
+enum State {
+    Empty,
+    Locale(LanguageIdentifier),
+    Solver {
+        locale: LanguageIdentifier,
+        solver: SerialProblemSolver,
+    },
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self::Empty
+    }
+}
+
+impl State {
+    fn get_locale(&self) -> &LanguageIdentifier {
+        match self {
+            Self::Locale(locale) => locale,
+            Self::Solver { locale, .. } => locale,
+            Self::Empty => unreachable!(),
+        }
+    }
+
+    fn take_solver(&mut self) -> SerialProblemSolver {
+        replace_with::replace_with_or_default_and_return(self, |self_| match self_ {
+            Self::Solver { locale, solver } => (solver, Self::Locale(locale)),
+            _ => unreachable!(),
+        })
+    }
+
+    fn put_back_solver(&mut self, solver: SerialProblemSolver) {
+        replace_with::replace_with_or_default(self, |self_| match self_ {
+            Self::Locale(locale) => Self::Solver { locale, solver },
+            _ => unreachable!(),
+        })
+    }
+}
+
 pub struct GenerateBundlesSync {
     reg: L10nRegistry,
-    lang_ids: <Vec<LanguageIdentifier> as IntoIterator>::IntoIter,
-    resource_ids: Vec<String>,
-    state: Option<(
-        LanguageIdentifier,
-        itertools::MultiProduct<Rev<Range<usize>>>,
-    )>,
+    locales: <Vec<LanguageIdentifier> as IntoIterator>::IntoIter,
+    res_ids: Vec<String>,
+    state: State,
 }
 
 impl GenerateBundlesSync {
-    fn new(
-        reg: L10nRegistry,
-        lang_ids: Vec<LanguageIdentifier>,
-        resource_ids: Vec<String>,
-    ) -> Self {
+    fn new(reg: L10nRegistry, locales: Vec<LanguageIdentifier>, res_ids: Vec<String>) -> Self {
         Self {
             reg,
-            lang_ids: lang_ids.into_iter(),
-            resource_ids,
-            state: None,
+            locales: locales.into_iter(),
+            res_ids,
+            state: State::Empty,
         }
     }
 }
 
+impl SyncTester for GenerateBundlesSync {
+    fn test_sync(&self, res_idx: usize, source_idx: usize) -> bool {
+        let locale = self.state.get_locale();
+        let res = &self.res_ids[res_idx];
+        self.reg
+            .lock()
+            .source_idx(source_idx)
+            .fetch_file_sync(locale, res)
+            .is_some()
+    }
+}
+
 impl Iterator for GenerateBundlesSync {
-    type Item = FluentBundle;
+    type Item = Result<FluentBundle, (FluentBundle, Vec<FluentError>)>;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            if let Some((ref mut langid, ref mut source_orders)) = self.state {
-                for source_order in source_orders {
-                    if let Some(set) = self.reg.lock().generate_resource_set_sync(
-                        langid,
-                        &source_order,
-                        &self.resource_ids,
-                    ) {
-                        let mut bundle = FluentBundle::new(vec![langid.clone()]);
-                        for res in set {
-                            bundle.add_resource(res).unwrap()
-                        }
-                        return Some(bundle);
+            if let State::Solver { .. } = self.state {
+                let mut solver = self.state.take_solver();
+                if let Some(order) = solver.next(self) {
+                    let locale = self.state.get_locale();
+                    let bundle =
+                        self.reg
+                            .lock()
+                            .bundle_from_order(locale.clone(), order, &self.res_ids);
+                    self.state.put_back_solver(solver);
+                    if bundle.is_some() {
+                        return bundle;
+                    } else {
+                        continue;
                     }
                 }
+                self.state = State::Empty;
             }
 
-            let lang_id = self.lang_ids.next()?;
-            let source_orders = super::permute_iter(self.reg.lock().len(), self.resource_ids.len());
-            self.state = Some((lang_id, source_orders))
+            let locale = self.locales.next()?;
+            let solver = SerialProblemSolver::new(self.res_ids.len(), self.reg.lock().len());
+            self.state = State::Solver { locale, solver };
         }
     }
 }

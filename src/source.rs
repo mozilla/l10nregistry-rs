@@ -1,4 +1,7 @@
-use crate::{fluent::{FluentResource, FluentError}, FileFetcher};
+use crate::{
+    fluent::{FluentError, FluentResource},
+    FileFetcher,
+};
 
 use std::{
     borrow::Borrow,
@@ -24,8 +27,14 @@ pub struct ResourceResult {
 impl From<String> for ResourceResult {
     fn from(source: String) -> Self {
         match FluentResource::try_new(source) {
-            Ok(res) => ResourceResult { res: Rc::new(res), errors: vec![] },
-            Err((res, errors)) => ResourceResult { res: Rc::new(res), errors: errors.into_iter().map(Into::into).collect() },
+            Ok(res) => ResourceResult {
+                res: Rc::new(res),
+                errors: vec![],
+            },
+            Err((res, errors)) => ResourceResult {
+                res: Rc::new(res),
+                errors: errors.into_iter().map(Into::into).collect(),
+            },
         }
     }
 }
@@ -249,10 +258,12 @@ impl Inner {
 }
 
 async fn read_resource(path: String, shared: Rc<Inner>) -> ResourceOption {
-    let resource =
-        shared.fetcher.fetch(&path).await.ok().map(|source| {
-            source.into()
-        });
+    let resource = shared
+        .fetcher
+        .fetch(&path)
+        .await
+        .ok()
+        .map(|source| source.into());
     // insert the resource into the cache
     shared.update_resource(path, resource)
 }

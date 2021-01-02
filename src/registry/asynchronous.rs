@@ -1,44 +1,23 @@
 use std::{
-    iter::Rev,
-    ops::Range,
     pin::Pin,
     task::{Context, Poll},
 };
 
 use super::{L10nRegistry, L10nRegistryLocked};
+use crate::solver::{AsyncTester, ParallelProblemSolver};
 use crate::{
-    fluent::FluentBundle,
+    fluent::{FluentBundle, FluentError},
     source::{ResourceOption, ResourceStatus},
 };
 
 use futures::{
-    ready,
     stream::{Collect, FuturesOrdered},
-    Stream, StreamExt, FutureExt,
+    Stream, StreamExt,
 };
+use std::future::Future;
 use unic_langid::LanguageIdentifier;
 
-pub type ResourceSetStream = Collect<FuturesOrdered<ResourceStatus>, Vec<ResourceOption>>;
-
-impl<'a> L10nRegistryLocked<'a> {
-    pub(crate) fn generate_resource_set<P>(
-        &self,
-        langid: &LanguageIdentifier,
-        source_order: &[usize],
-        resource_ids: &[P],
-    ) -> ResourceSetStream
-    where
-        P: AsRef<str>,
-    {
-        debug_assert_eq!(source_order.len(), resource_ids.len());
-        let stream = source_order
-            .iter()
-            .zip(resource_ids.iter().map(AsRef::as_ref))
-            .map(|(&idx, path)| self.source_idx(idx).fetch_file(langid, path))
-            .collect::<FuturesOrdered<_>>();
-        stream.collect()
-    }
-}
+impl<'a> L10nRegistryLocked<'a> {}
 
 impl L10nRegistry {
     pub fn generate_bundles_for_lang(
@@ -60,193 +39,132 @@ impl L10nRegistry {
     }
 }
 
-struct State {
-    lang_id: LanguageIdentifier,
-    source_orders: itertools::MultiProduct<Rev<Range<usize>>>,
-    resource_set: Option<ResourceSetStream>,
+enum State {
+    Empty,
+    Locale(LanguageIdentifier),
+    Solver {
+        locale: LanguageIdentifier,
+        solver: ParallelProblemSolver<GenerateBundles>,
+    },
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self::Empty
+    }
+}
+
+impl State {
+    fn get_locale(&self) -> &LanguageIdentifier {
+        match self {
+            Self::Locale(locale) => locale,
+            Self::Solver { locale, .. } => locale,
+            Self::Empty => unreachable!(),
+        }
+    }
+
+    fn take_solver(&mut self) -> ParallelProblemSolver<GenerateBundles> {
+        replace_with::replace_with_or_default_and_return(self, |self_| match self_ {
+            Self::Solver { locale, solver } => (solver, Self::Locale(locale)),
+            _ => unreachable!(),
+        })
+    }
+
+    fn put_back_solver(&mut self, solver: ParallelProblemSolver<GenerateBundles>) {
+        replace_with::replace_with_or_default(self, |self_| match self_ {
+            Self::Locale(locale) => Self::Solver { locale, solver },
+            _ => unreachable!(),
+        })
+    }
 }
 
 pub struct GenerateBundles {
     reg: L10nRegistry,
-    lang_ids: <Vec<LanguageIdentifier> as IntoIterator>::IntoIter,
-    resource_ids: Vec<String>,
-    state: Option<State>,
+    locales: <Vec<LanguageIdentifier> as IntoIterator>::IntoIter,
+    res_ids: Vec<String>,
+    state: State,
 }
 
 impl GenerateBundles {
-    fn new(
-        reg: L10nRegistry,
-        lang_ids: Vec<LanguageIdentifier>,
-        resource_ids: Vec<String>,
-    ) -> Self {
+    fn new(reg: L10nRegistry, locales: Vec<LanguageIdentifier>, res_ids: Vec<String>) -> Self {
         Self {
             reg,
-            lang_ids: lang_ids.into_iter(),
-            resource_ids,
-            state: None,
+            locales: locales.into_iter(),
+            res_ids,
+            state: State::Empty,
         }
+    }
+}
+
+pub type ResourceSetStream = Collect<FuturesOrdered<ResourceStatus>, Vec<ResourceOption>>;
+pub struct TestResult(ResourceSetStream);
+impl std::marker::Unpin for TestResult {}
+
+impl Future for TestResult {
+    type Output = Vec<bool>;
+
+    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        let pinned = Pin::new(&mut self.0);
+        pinned
+            .poll(cx)
+            .map(|set| set.iter().map(|c| c.is_some()).collect())
+    }
+}
+
+impl<'l> AsyncTester for GenerateBundles {
+    type Result = TestResult;
+
+    fn test_async(&self, query: Vec<(usize, usize)>) -> Self::Result {
+        let locale = self.state.get_locale();
+        let lock = self.reg.lock();
+
+        let stream = query
+            .iter()
+            .map(|(res_idx, source_idx)| {
+                let res = &self.res_ids[*res_idx];
+                lock.source_idx(*source_idx).fetch_file(locale, res)
+            })
+            .collect::<FuturesOrdered<_>>();
+        TestResult(stream.collect())
     }
 }
 
 impl Stream for GenerateBundles {
-    type Item = FluentBundle;
+    type Item = Result<FluentBundle, (FluentBundle, Vec<FluentError>)>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = &mut *self;
-        // ZOMG, this is torturous...
-        // Effectively this is tracking state for performing the following loop:
-        // ```
-        // for langid in self.lang_ids {
-        //     let source_orders = permutation of # of sources;
-        //     for source_order in source_orders {
-        //         let set = registry.generate_resource_set(langid, source_order, self.resource_ids).await;
-        //         if Some(set) = set {
-        //             return Some(Bundle::new(set))
-        //         }
-        //     }
-        // }
-        // ```
         loop {
-            // Do we have state from last time?
-            if let Some(State {
-                lang_id,
-                source_orders,
-                resource_set,
-            }) = &mut this.state
-            {
-                'inner: loop {
-                    // Loop over all the source order combinations...
-                    if let Some(fut) = resource_set {
-                        // We have a pending Future to produce <Vec<Option<FluentResource>>>. Poll it...
-                        let set = ready!(fut.poll_unpin(cx));
-                        let _ = resource_set.take(); // A result is ready, clear the future.
-                                                     // Construct Bundle from the Resources in the set.
-                        let mut bundle = FluentBundle::new(vec![lang_id.clone()]);
-                        for res in set {
-                            if let Some(res) = res {
-                                // TODO: add_resource returns `Result`
-                                // this could become a `TryStream`
-                                bundle
-                                    .add_resource(res.res)
-                                    .expect("Failed to add resource to bundle");
+            if let State::Solver { .. } = self.state {
+                let mut solver = self.state.take_solver();
+                let pinned_solver = Pin::new(&mut solver);
+                match pinned_solver.poll_next(cx, &self) {
+                    std::task::Poll::Ready(order) => {
+                        if let Some(order) = order {
+                            let locale = self.state.get_locale();
+                            let bundle = self.reg.lock().bundle_from_order(
+                                locale.clone(),
+                                &order,
+                                &self.res_ids,
+                            );
+                            self.state.put_back_solver(solver);
+                            if bundle.is_some() {
+                                return bundle.into();
                             } else {
-                                continue 'inner;
+                                continue;
                             }
+                        } else {
+                            self.state = State::Empty;
+                            continue;
                         }
-                        return Some(bundle).into();
                     }
-
-                    // No pending Future, create the next one...
-                    if let Some(source_order) = source_orders.next() {
-                        resource_set.replace(this.reg.lock().generate_resource_set(
-                            lang_id,
-                            &source_order,
-                            &this.resource_ids,
-                        ));
-                    } else {
-                        break 'inner;
+                    std::task::Poll::Pending => {
+                        self.state.put_back_solver(solver);
                     }
                 }
-            }
-
-            // Move to the next LanguageIdentifier and reset the source permutation...
-            if let Some(lang_id) = this.lang_ids.next() {
-                let source_orders =
-                    super::permute_iter(this.reg.lock().len(), this.resource_ids.len());
-                this.state = Some(State {
-                    lang_id,
-                    source_orders,
-                    resource_set: None,
-                })
+            } else if let Some(locale) = self.locales.next() {
+                let solver = ParallelProblemSolver::new(self.res_ids.len(), self.reg.lock().len());
+                self.state = State::Solver { locale, solver };
             } else {
-                // No lang_id remaining. All done!
-                return None.into();
-            }
-        }
-    }
-}
-
-pub struct GenerateVec {
-    reg: L10nRegistry,
-    lang_ids: <Vec<LanguageIdentifier> as IntoIterator>::IntoIter,
-    resource_ids: Vec<String>,
-    state: Option<State>,
-}
-
-impl GenerateVec {
-    pub fn new(
-        reg: L10nRegistry,
-        lang_ids: Vec<LanguageIdentifier>,
-        resource_ids: Vec<String>,
-    ) -> Self {
-        Self {
-            reg,
-            lang_ids: lang_ids.into_iter(),
-            resource_ids,
-            state: None,
-        }
-    }
-}
-
-impl Stream for GenerateVec {
-    type Item = Vec<ResourceOption>;
-
-    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let this = &mut *self;
-        // ZOMG, this is torturous...
-        // Effectively this is tracking state for performing the following loop:
-        // ```
-        // for langid in self.lang_ids {
-        //     let source_orders = permutation of # of sources;
-        //     for source_order in source_orders {
-        //         let set = registry.generate_resource_set(langid, source_order, self.resource_ids).await;
-        //         if Some(set) = set {
-        //             return Some(Bundle::new(set))
-        //         }
-        //     }
-        // }
-        // ```
-        loop {
-            // Do we have state from last time?
-            if let Some(State {
-                lang_id,
-                source_orders,
-                resource_set,
-            }) = &mut this.state
-            {
-                'inner: loop {
-                    // Loop over all the source order combinations...
-                    if let Some(fut) = resource_set {
-                        // We have a pending Future to produce Option<Vec<FluentResource>>. Poll it...
-                        let set = ready!(fut.poll_unpin(cx));
-                        let _ = resource_set.take(); // A result is ready, clear the future.
-                        return Some(set).into();
-                    }
-
-                    // No pending Future, create the next one...
-                    if let Some(source_order) = source_orders.next() {
-                        resource_set.replace(this.reg.lock().generate_resource_set(
-                            lang_id,
-                            &source_order,
-                            &this.resource_ids,
-                        ));
-                    } else {
-                        break 'inner;
-                    }
-                }
-            }
-
-            // Move to the next LanguageIdentifier and reset the source permutation...
-            if let Some(lang_id) = this.lang_ids.next() {
-                let source_orders =
-                    super::permute_iter(this.reg.lock().len(), this.resource_ids.len());
-                this.state = Some(State {
-                    lang_id,
-                    source_orders,
-                    resource_set: None,
-                })
-            } else {
-                // No lang_id remaining. All done!
                 return None.into();
             }
         }
