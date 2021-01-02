@@ -32,6 +32,12 @@ impl TestFileFetcher {
     }
 
     pub fn get_registry(&self, scenario: &fluent_testing::scenarios::structs::Scenario) -> L10nRegistry {
+        let locales: Vec<LanguageIdentifier> = scenario
+            .locales
+            .iter()
+            .map(|l| l.parse().unwrap())
+            .collect();
+
         let mut reg = L10nRegistry::default();
         let sources = scenario
             .file_sources
@@ -45,6 +51,7 @@ impl TestFileFetcher {
             })
         .collect();
         reg.register_sources(sources).unwrap();
+        reg.set_lang_ids(locales);
         reg
     }
 }
