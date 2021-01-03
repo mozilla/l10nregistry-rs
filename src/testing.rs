@@ -1,10 +1,99 @@
-use crate::environment::LocalesProvider;
+use crate::environment::{ErrorReporter, LocalesProvider};
+use crate::errors::L10nRegistryError;
 use crate::registry::L10nRegistry;
-use crate::source::{FileFetcher, FileSource};
+use crate::source::FileFetcher;
 use async_trait::async_trait;
 use fluent_testing::MockFileSystem;
+use std::cell::RefCell;
 use std::rc::Rc;
 use unic_langid::LanguageIdentifier;
+
+pub struct RegistrySetup {
+    pub name: String,
+    pub file_sources: Vec<FileSource>,
+    pub locales: Vec<LanguageIdentifier>,
+}
+
+pub struct FileSource {
+    pub name: String,
+    pub locales: Vec<LanguageIdentifier>,
+    pub path_scheme: String,
+}
+
+impl FileSource {
+    pub fn new<S>(name: S, locales: Vec<LanguageIdentifier>, path_scheme: S) -> Self
+    where
+        S: ToString,
+    {
+        Self {
+            name: name.to_string(),
+            locales,
+            path_scheme: path_scheme.to_string(),
+        }
+    }
+}
+
+impl RegistrySetup {
+    pub fn new(
+        name: &str,
+        file_sources: Vec<FileSource>,
+        locales: Vec<LanguageIdentifier>,
+    ) -> Self {
+        Self {
+            name: name.to_string(),
+            file_sources,
+            locales,
+        }
+    }
+}
+
+impl From<fluent_testing::scenarios::structs::Scenario> for RegistrySetup {
+    fn from(s: fluent_testing::scenarios::structs::Scenario) -> Self {
+        Self {
+            name: s.name,
+            file_sources: s
+                .file_sources
+                .into_iter()
+                .map(|source| {
+                    FileSource::new(
+                        source.name,
+                        source
+                            .locales
+                            .into_iter()
+                            .map(|l| l.parse().unwrap())
+                            .collect(),
+                        source.path_scheme,
+                    )
+                })
+                .collect(),
+            locales: s
+                .locales
+                .into_iter()
+                .map(|loc| loc.parse().unwrap())
+                .collect(),
+        }
+    }
+}
+
+impl From<&fluent_testing::scenarios::structs::Scenario> for RegistrySetup {
+    fn from(s: &fluent_testing::scenarios::structs::Scenario) -> Self {
+        Self {
+            name: s.name.clone(),
+            file_sources: s
+                .file_sources
+                .iter()
+                .map(|source| {
+                    FileSource::new(
+                        source.name.clone(),
+                        source.locales.iter().map(|l| l.parse().unwrap()).collect(),
+                        source.path_scheme.clone(),
+                    )
+                })
+                .collect(),
+            locales: s.locales.iter().map(|loc| loc.parse().unwrap()).collect(),
+        }
+    }
+}
 
 #[derive(Default)]
 struct InnerFileFetcher {
@@ -28,31 +117,23 @@ impl TestFileFetcher {
         name: &str,
         locales: Vec<LanguageIdentifier>,
         path: &str,
-    ) -> FileSource {
-        FileSource::new(name.to_string(), locales, path.to_string(), self.clone())
+    ) -> crate::source::FileSource {
+        crate::source::FileSource::new(name.to_string(), locales, path.to_string(), self.clone())
     }
 
-    pub fn get_registry(
-        &self,
-        scenario: &fluent_testing::scenarios::structs::Scenario,
-    ) -> L10nRegistry<TestLocalesProvider> {
-        let locales: Vec<LanguageIdentifier> = scenario
-            .locales
-            .iter()
-            .map(|l| l.parse().unwrap())
-            .collect();
-        let provider = TestLocalesProvider::new(locales);
+    pub fn get_registry<S>(&self, setup: S) -> L10nRegistry<TestEnvironment>
+    where
+        S: Into<RegistrySetup>,
+    {
+        let setup: RegistrySetup = setup.into();
+        let provider = TestEnvironment::new(setup.locales);
 
         let mut reg = L10nRegistry::with_provider(provider);
-        let sources = scenario
+        let sources = setup
             .file_sources
-            .iter()
+            .into_iter()
             .map(|source| {
-                self.get_test_file_source(
-                    &source.name,
-                    source.locales.iter().map(|s| s.parse().unwrap()).collect(),
-                    &source.path_scheme,
-                )
+                self.get_test_file_source(&source.name, source.locales, &source.path_scheme)
             })
             .collect();
         reg.register_sources(sources).unwrap();
@@ -71,25 +152,64 @@ impl FileFetcher for TestFileFetcher {
     }
 }
 
-pub struct InnerTestLocalesProvider {
+pub enum ErrorStrategy {
+    Panic,
+    Report,
+    Nothing,
+}
+
+pub struct InnerTestEnvironment {
     locales: Vec<LanguageIdentifier>,
+    errors: Vec<L10nRegistryError>,
+    error_strategy: ErrorStrategy,
 }
 
 #[derive(Clone)]
-pub struct TestLocalesProvider {
-    inner: Rc<InnerTestLocalesProvider>,
+pub struct TestEnvironment {
+    inner: Rc<RefCell<InnerTestEnvironment>>,
 }
 
-impl TestLocalesProvider {
+impl TestEnvironment {
     pub fn new(locales: Vec<LanguageIdentifier>) -> Self {
         Self {
-            inner: Rc::new(InnerTestLocalesProvider { locales }),
+            inner: Rc::new(RefCell::new(InnerTestEnvironment {
+                locales,
+                errors: vec![],
+                error_strategy: ErrorStrategy::Report,
+            })),
         }
+    }
+
+    pub fn set_locales(&self, locales: Vec<LanguageIdentifier>) {
+        self.inner.borrow_mut().locales = locales;
+    }
+
+    pub fn errors(&self) -> Vec<L10nRegistryError> {
+        self.inner.borrow().errors.clone()
+    }
+
+    pub fn clear_errors(&self) {
+        self.inner.borrow_mut().errors.clear()
     }
 }
 
-impl LocalesProvider for TestLocalesProvider {
-    fn locales(&self) -> &[LanguageIdentifier] {
-        &self.inner.locales
+impl LocalesProvider for TestEnvironment {
+    fn locales(&self) -> Vec<LanguageIdentifier> {
+        self.inner.borrow().locales.clone()
+    }
+}
+
+impl ErrorReporter for TestEnvironment {
+    fn report_errors(&self, errors: Vec<L10nRegistryError>) {
+        match self.inner.borrow().error_strategy {
+            ErrorStrategy::Panic => {
+                panic!("Errors: {:#?}", errors);
+            }
+            ErrorStrategy::Report => {
+                println!("Errors: {:#?}", errors);
+            }
+            ErrorStrategy::Nothing => {}
+        }
+        self.inner.borrow_mut().errors.extend(errors);
     }
 }

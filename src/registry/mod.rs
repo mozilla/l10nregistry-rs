@@ -8,7 +8,7 @@ use std::{
 
 use crate::source::FileSource;
 
-use crate::environment::LocalesProvider;
+use crate::environment::{ErrorReporter, LocalesProvider};
 use chunky_vec::ChunkyVec;
 use fluent_bundle::FluentResource;
 use fluent_fallback::generator::BundleGenerator;
@@ -97,7 +97,7 @@ impl<P> L10nRegistry<P> {
 
 impl<P> BundleGenerator for L10nRegistry<P>
 where
-    P: LocalesProvider + Clone,
+    P: LocalesProvider + ErrorReporter + Clone,
 {
     type Resource = Rc<FluentResource>;
     type Iter = GenerateBundlesSync<P>;

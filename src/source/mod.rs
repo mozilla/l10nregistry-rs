@@ -336,7 +336,7 @@ mod tests {
         let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
 
         let _ = fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT);
-        let file2 = fs1.fetch_file_sync(&en_us, FTL_RESOURCE_PRESENT, false);
+        let file2 = fs1.fetch_file_sync(&en_us, FTL_RESOURCE_PRESENT, true);
         assert!(file2.is_some());
     }
 }

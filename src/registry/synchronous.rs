@@ -20,6 +20,9 @@ impl<'a> L10nRegistryLocked<'a> {
         for (&source_idx, path) in source_order.iter().zip(res_ids.iter()) {
             let source = self.source_idx(source_idx);
             if let Some(res) = source.fetch_file_sync(&locale, path, false) {
+                if !res.errors.is_empty() {
+                    errors.extend(res.errors);
+                }
                 if let Err(err) = bundle.add_resource(res.res) {
                     errors.extend(err);
                 }

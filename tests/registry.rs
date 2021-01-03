@@ -1,5 +1,4 @@
-use l10nregistry::registry::L10nRegistry;
-use l10nregistry::testing::TestFileFetcher;
+use l10nregistry::testing::{FileSource, RegistrySetup, TestFileFetcher};
 use unic_langid::LanguageIdentifier;
 
 const FTL_RESOURCE_TOOLKIT: &str = "toolkit/global/textActions.ftl";
@@ -7,14 +6,17 @@ const FTL_RESOURCE_BROWSER: &str = "branding/brand.ftl";
 
 #[test]
 fn test_generate_sources_for_file() {
-    let fetcher = TestFileFetcher::new();
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-
-    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
-    let fs2 = fetcher.get_test_file_source("browser", vec![en_us.clone()], "browser/{locale}");
-
-    let mut reg = L10nRegistry::default();
-    reg.register_sources(vec![fs1, fs2]).unwrap();
+    let setup = RegistrySetup::new(
+        "test",
+        vec![
+            FileSource::new("toolkit", vec![en_us.clone()], "toolkit/{locale}"),
+            FileSource::new("browser", vec![en_us.clone()], "browser/{locale}"),
+        ],
+        vec![en_us.clone()],
+    );
+    let fetcher = TestFileFetcher::new();
+    let reg = fetcher.get_registry(setup);
 
     {
         let lock = reg.lock();
@@ -29,7 +31,7 @@ fn test_generate_sources_for_file() {
         assert_eq!(i.next(), None);
 
         assert!(browser
-            .fetch_file_sync(&en_us, FTL_RESOURCE_TOOLKIT)
+            .fetch_file_sync(&en_us, FTL_RESOURCE_TOOLKIT, false)
             .is_none());
 
         let mut i = lock.generate_sources_for_file(&en_us, FTL_RESOURCE_TOOLKIT);
@@ -37,7 +39,7 @@ fn test_generate_sources_for_file() {
         assert_eq!(i.next(), None);
 
         assert!(toolkit
-            .fetch_file_sync(&en_us, FTL_RESOURCE_TOOLKIT)
+            .fetch_file_sync(&en_us, FTL_RESOURCE_TOOLKIT, false)
             .is_some());
 
         let mut i = lock.generate_sources_for_file(&en_us, FTL_RESOURCE_TOOLKIT);
@@ -48,13 +50,17 @@ fn test_generate_sources_for_file() {
 
 #[test]
 fn test_generate_bundles_for_lang_sync() {
-    let fetcher = TestFileFetcher::new();
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
-    let fs2 = fetcher.get_test_file_source("browser", vec![en_us.clone()], "browser/{locale}");
-
-    let mut reg = L10nRegistry::default();
-    reg.register_sources(vec![fs1, fs2]).unwrap();
+    let setup = RegistrySetup::new(
+        "test",
+        vec![
+            FileSource::new("toolkit", vec![en_us.clone()], "toolkit/{locale}"),
+            FileSource::new("browser", vec![en_us.clone()], "browser/{locale}"),
+        ],
+        vec![en_us.clone()],
+    );
+    let fetcher = TestFileFetcher::new();
+    let reg = fetcher.get_registry(setup);
 
     let paths = vec![FTL_RESOURCE_TOOLKIT.into(), FTL_RESOURCE_BROWSER.into()];
     let mut i = reg.generate_bundles_for_lang_sync(en_us.clone(), paths);
@@ -65,13 +71,17 @@ fn test_generate_bundles_for_lang_sync() {
 
 #[test]
 fn test_generate_bundles_sync() {
-    let fetcher = TestFileFetcher::new();
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
-    let fs2 = fetcher.get_test_file_source("browser", vec![en_us.clone()], "browser/{locale}");
-
-    let mut reg = L10nRegistry::default();
-    reg.register_sources(vec![fs1, fs2]).unwrap();
+    let setup = RegistrySetup::new(
+        "test",
+        vec![
+            FileSource::new("toolkit", vec![en_us.clone()], "toolkit/{locale}"),
+            FileSource::new("browser", vec![en_us.clone()], "browser/{locale}"),
+        ],
+        vec![en_us.clone()],
+    );
+    let fetcher = TestFileFetcher::new();
+    let reg = fetcher.get_registry(setup);
 
     let paths = vec![FTL_RESOURCE_TOOLKIT.into(), FTL_RESOURCE_BROWSER.into()];
     let lang_ids = vec![en_us];
@@ -85,13 +95,17 @@ fn test_generate_bundles_sync() {
 async fn test_generate_bundles_for_lang() {
     use futures::stream::StreamExt;
 
-    let fetcher = TestFileFetcher::new();
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
-    let fs2 = fetcher.get_test_file_source("browser", vec![en_us.clone()], "browser/{locale}");
-
-    let mut reg = L10nRegistry::default();
-    reg.register_sources(vec![fs1, fs2]).unwrap();
+    let setup = RegistrySetup::new(
+        "test",
+        vec![
+            FileSource::new("toolkit", vec![en_us.clone()], "toolkit/{locale}"),
+            FileSource::new("browser", vec![en_us.clone()], "browser/{locale}"),
+        ],
+        vec![en_us.clone()],
+    );
+    let fetcher = TestFileFetcher::new();
+    let reg = fetcher.get_registry(setup);
 
     let paths = vec![FTL_RESOURCE_TOOLKIT.into(), FTL_RESOURCE_BROWSER.into()];
     let mut i = reg.generate_bundles_for_lang(en_us, paths);
@@ -104,13 +118,17 @@ async fn test_generate_bundles_for_lang() {
 async fn test_generate_bundles() {
     use futures::stream::StreamExt;
 
-    let fetcher = TestFileFetcher::new();
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
-    let fs2 = fetcher.get_test_file_source("browser", vec![en_us.clone()], "browser/{locale}");
-
-    let mut reg = L10nRegistry::default();
-    reg.register_sources(vec![fs1, fs2]).unwrap();
+    let setup = RegistrySetup::new(
+        "test",
+        vec![
+            FileSource::new("toolkit", vec![en_us.clone()], "toolkit/{locale}"),
+            FileSource::new("browser", vec![en_us.clone()], "browser/{locale}"),
+        ],
+        vec![en_us.clone()],
+    );
+    let fetcher = TestFileFetcher::new();
+    let reg = fetcher.get_registry(setup);
 
     let paths = vec![FTL_RESOURCE_TOOLKIT.into(), FTL_RESOURCE_BROWSER.into()];
     let langs = vec![en_us];
