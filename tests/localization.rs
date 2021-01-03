@@ -104,7 +104,7 @@ fn localization_format_values_sync() {
         let result = query.1.unwrap_or(query.0);
         assert_eq!(value.clone(), Cow::Borrowed(result));
     }
-    assert_eq!(errors, vec![]);
+    assert_eq!(errors.len(), 1);
 }
 
 #[tokio::test]
