@@ -1,7 +1,9 @@
 mod fetcher;
 pub use fetcher::FileFetcher;
 
-use crate::fluent::{FluentError, FluentResource};
+use crate::environment::ErrorReporter;
+use crate::errors::L10nRegistryError;
+use crate::fluent::FluentResource;
 
 use std::{
     borrow::Borrow,
@@ -18,28 +20,8 @@ use futures::{future::Shared, Future, FutureExt};
 use log::{trace, warn};
 use unic_langid::LanguageIdentifier;
 
-#[derive(Debug, Clone)]
-pub struct ResourceResult {
-    pub res: Rc<FluentResource>,
-    pub errors: Vec<FluentError>,
-}
-
-impl From<String> for ResourceResult {
-    fn from(source: String) -> Self {
-        match FluentResource::try_new(source) {
-            Ok(res) => ResourceResult {
-                res: Rc::new(res),
-                errors: vec![],
-            },
-            Err((res, errors)) => ResourceResult {
-                res: Rc::new(res),
-                errors: errors.into_iter().map(Into::into).collect(),
-            },
-        }
-    }
-}
-
-pub type ResourceOption = Option<ResourceResult>;
+pub type RcResource = Rc<FluentResource>;
+pub type ResourceOption = Option<RcResource>;
 pub type ResourceFuture = Shared<Pin<Box<dyn Future<Output = ResourceOption>>>>;
 
 #[derive(Debug, Clone)]
@@ -49,7 +31,7 @@ pub enum ResourceStatus {
     /// The resource is loading and future will deliver the result.
     Loading(ResourceFuture),
     /// The resource is loaded and parsed.
-    Loaded(ResourceResult),
+    Loaded(RcResource),
 }
 
 impl From<ResourceOption> for ResourceStatus {
@@ -90,6 +72,7 @@ pub struct FileSource {
 
 struct Inner {
     fetcher: Box<dyn FileFetcher>,
+    error_reporter: Option<RefCell<Box<dyn ErrorReporter>>>,
     entries: RefCell<HashMap<String, ResourceStatus>>,
 }
 
@@ -128,8 +111,14 @@ impl FileSource {
             shared: Rc::new(Inner {
                 entries: RefCell::new(HashMap::default()),
                 fetcher: Box::new(fetcher),
+                error_reporter: None,
             }),
         }
+    }
+
+    pub fn set_reporter(&mut self, reporter: impl ErrorReporter + 'static) {
+        let mut shared = Rc::get_mut(&mut self.shared).unwrap();
+        shared.error_reporter = Some(RefCell::new(Box::new(reporter)));
     }
 }
 
@@ -147,7 +136,23 @@ impl FileSource {
             .fetcher
             .fetch_sync(full_path)
             .ok()
-            .map(|source| source.into())
+            .map(|source| match FluentResource::try_new(source) {
+                Ok(res) => Rc::new(res),
+                Err((res, errors)) => {
+                    if let Some(reporter) = &self.shared.error_reporter {
+                        reporter.borrow().report_errors(
+                            errors
+                                .into_iter()
+                                .map(|e| L10nRegistryError::FluentError {
+                                    path: full_path.to_string(),
+                                    error: e.into(),
+                                })
+                                .collect(),
+                        );
+                    }
+                    Rc::new(res)
+                }
+            })
     }
 
     /// Attempt to synchronously fetch resource for the combination of `langid`
@@ -266,12 +271,26 @@ impl Inner {
 }
 
 async fn read_resource(path: String, shared: Rc<Inner>) -> ResourceOption {
-    let resource = shared
-        .fetcher
-        .fetch(&path)
-        .await
-        .ok()
-        .map(|source| source.into());
+    let resource =
+        shared.fetcher.fetch(&path).await.ok().map(|source| {
+            match FluentResource::try_new(source) {
+                Ok(res) => Rc::new(res),
+                Err((res, errors)) => {
+                    if let Some(reporter) = &shared.error_reporter.borrow() {
+                        reporter.borrow().report_errors(
+                            errors
+                                .into_iter()
+                                .map(|e| L10nRegistryError::FluentError {
+                                    path: path.clone(),
+                                    error: e.into(),
+                                })
+                                .collect(),
+                        );
+                    }
+                    Rc::new(res)
+                }
+            }
+        });
     // insert the resource into the cache
     shared.update_resource(path, resource)
 }
