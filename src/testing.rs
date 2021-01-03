@@ -1,5 +1,5 @@
 use crate::registry::L10nRegistry;
-use crate::{FileFetcher, FileSource};
+use crate::source::{FileFetcher, FileSource};
 use async_trait::async_trait;
 use fluent_testing::MockFileSystem;
 use std::rc::Rc;

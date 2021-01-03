@@ -1,6 +1,8 @@
+mod fetcher;
+pub use fetcher::FileFetcher;
+
 use crate::{
     fluent::{FluentError, FluentResource},
-    FileFetcher,
 };
 
 use std::{
