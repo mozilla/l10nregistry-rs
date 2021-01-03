@@ -153,7 +153,12 @@ impl FileSource {
     /// Attempt to synchronously fetch resource for the combination of `langid`
     /// and `path`. Returns `Some(ResourceResult)` if the resource is available,
     /// else `None`.
-    pub fn fetch_file_sync(&self, langid: &LanguageIdentifier, path: &str) -> ResourceOption {
+    pub fn fetch_file_sync(
+        &self,
+        langid: &LanguageIdentifier,
+        path: &str,
+        overload: bool,
+    ) -> ResourceOption {
         use ResourceStatus::*;
 
         let full_path = self.get_path(langid, &path);
@@ -167,7 +172,7 @@ impl FileSource {
         match res {
             Missing => None,
             Loaded(res) => Some(res),
-            Loading(..) => {
+            Loading(..) if overload => {
                 // A sync load has been requested for the same resource that has
                 // a pending async load in progress. How do we handle this?
                 //
@@ -184,6 +189,9 @@ impl FileSource {
                 // duplication of the resource.
                 warn!("[l10nregistry] Attempting to synchronously load file {} while it's being loaded asynchronously.", &full_path);
                 self.fetch_sync(&full_path)
+            }
+            Loading(..) => {
+                panic!("[l10nregistry] Attempting to synchronously load file {} while it's being loaded asynchronously.", &full_path);
             }
         }
     }
@@ -328,7 +336,7 @@ mod tests {
         let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
 
         let _ = fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT);
-        let file2 = fs1.fetch_file_sync(&en_us, FTL_RESOURCE_PRESENT);
+        let file2 = fs1.fetch_file_sync(&en_us, FTL_RESOURCE_PRESENT, false);
         assert!(file2.is_some());
     }
 }

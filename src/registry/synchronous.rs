@@ -19,7 +19,7 @@ impl<'a> L10nRegistryLocked<'a> {
 
         for (&source_idx, path) in source_order.iter().zip(res_ids.iter()) {
             let source = self.source_idx(source_idx);
-            if let Some(res) = source.fetch_file_sync(&locale, path) {
+            if let Some(res) = source.fetch_file_sync(&locale, path, false) {
                 if let Err(err) = bundle.add_resource(res.res) {
                     errors.extend(err);
                 }
@@ -123,7 +123,7 @@ impl<P> SyncTester for GenerateBundlesSync<P> {
         self.reg
             .lock()
             .source_idx(source_idx)
-            .fetch_file_sync(locale, res)
+            .fetch_file_sync(locale, res, false)
             .is_some()
     }
 }

@@ -12,8 +12,12 @@ fn test_fetch_sync() {
 
     let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
 
-    assert!(fs1.fetch_file_sync(&en_us, FTL_RESOURCE_PRESENT).is_some());
-    assert!(fs1.fetch_file_sync(&en_us, FTL_RESOURCE_MISSING).is_none());
+    assert!(fs1
+        .fetch_file_sync(&en_us, FTL_RESOURCE_PRESENT, false)
+        .is_some());
+    assert!(fs1
+        .fetch_file_sync(&en_us, FTL_RESOURCE_MISSING, false)
+        .is_none());
 }
 
 #[tokio::test]
@@ -35,9 +39,13 @@ async fn test_fetch_sync_2_async() {
 
     let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
 
-    assert!(fs1.fetch_file_sync(&en_us, FTL_RESOURCE_PRESENT).is_some());
+    assert!(fs1
+        .fetch_file_sync(&en_us, FTL_RESOURCE_PRESENT, false)
+        .is_some());
     assert!(fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT).await.is_some());
-    assert!(fs1.fetch_file_sync(&en_us, FTL_RESOURCE_PRESENT).is_some());
+    assert!(fs1
+        .fetch_file_sync(&en_us, FTL_RESOURCE_PRESENT, false)
+        .is_some());
 }
 
 #[tokio::test]
@@ -48,7 +56,9 @@ async fn test_fetch_async_2_sync() {
     let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
 
     assert!(fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT).await.is_some());
-    assert!(fs1.fetch_file_sync(&en_us, FTL_RESOURCE_PRESENT).is_some());
+    assert!(fs1
+        .fetch_file_sync(&en_us, FTL_RESOURCE_PRESENT, false)
+        .is_some());
 }
 
 #[test]
@@ -61,11 +71,11 @@ fn test_fetch_has_value_sync() {
     let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
 
     assert_eq!(fs1.has_file(&en_us, path), None);
-    assert!(fs1.fetch_file_sync(&en_us, path).is_some());
+    assert!(fs1.fetch_file_sync(&en_us, path, false).is_some());
     assert_eq!(fs1.has_file(&en_us, path), Some(true));
 
     assert_eq!(fs1.has_file(&en_us, path_missing), None);
-    assert!(fs1.fetch_file_sync(&en_us, path_missing).is_none());
+    assert!(fs1.fetch_file_sync(&en_us, path_missing, false).is_none());
     assert_eq!(fs1.has_file(&en_us, path_missing), Some(false));
 }
 
@@ -86,7 +96,7 @@ async fn test_fetch_has_value_async() {
     assert_eq!(fs1.has_file(&en_us, path_missing), None);
     assert!(fs1.fetch_file(&en_us, path_missing).await.is_none());
     assert_eq!(fs1.has_file(&en_us, path_missing), Some(false));
-    assert!(fs1.fetch_file_sync(&en_us, path_missing).is_none());
+    assert!(fs1.fetch_file_sync(&en_us, path_missing, false).is_none());
 }
 
 #[tokio::test]
