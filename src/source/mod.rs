@@ -1,9 +1,7 @@
 mod fetcher;
 pub use fetcher::FileFetcher;
 
-use crate::{
-    fluent::{FluentError, FluentResource},
-};
+use crate::fluent::{FluentError, FluentResource};
 
 use std::{
     borrow::Borrow,

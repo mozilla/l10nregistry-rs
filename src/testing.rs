@@ -1,3 +1,4 @@
+use crate::environment::LocalesProvider;
 use crate::registry::L10nRegistry;
 use crate::source::{FileFetcher, FileSource};
 use async_trait::async_trait;
@@ -34,14 +35,15 @@ impl TestFileFetcher {
     pub fn get_registry(
         &self,
         scenario: &fluent_testing::scenarios::structs::Scenario,
-    ) -> L10nRegistry {
+    ) -> L10nRegistry<TestLocalesProvider> {
         let locales: Vec<LanguageIdentifier> = scenario
             .locales
             .iter()
             .map(|l| l.parse().unwrap())
             .collect();
+        let provider = TestLocalesProvider::new(locales);
 
-        let mut reg = L10nRegistry::default();
+        let mut reg = L10nRegistry::with_provider(provider);
         let sources = scenario
             .file_sources
             .iter()
@@ -54,7 +56,6 @@ impl TestFileFetcher {
             })
             .collect();
         reg.register_sources(sources).unwrap();
-        reg.set_lang_ids(locales);
         reg
     }
 }
@@ -67,5 +68,28 @@ impl FileFetcher for TestFileFetcher {
 
     async fn fetch(&self, path: &str) -> std::io::Result<String> {
         self.inner.fs.get_test_file_async(path).await
+    }
+}
+
+pub struct InnerTestLocalesProvider {
+    locales: Vec<LanguageIdentifier>,
+}
+
+#[derive(Clone)]
+pub struct TestLocalesProvider {
+    inner: Rc<InnerTestLocalesProvider>,
+}
+
+impl TestLocalesProvider {
+    pub fn new(locales: Vec<LanguageIdentifier>) -> Self {
+        Self {
+            inner: Rc::new(InnerTestLocalesProvider { locales }),
+        }
+    }
+}
+
+impl LocalesProvider for TestLocalesProvider {
+    fn locales(&self) -> &[LanguageIdentifier] {
+        &self.inner.locales
     }
 }

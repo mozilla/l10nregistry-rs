@@ -1,5 +1,5 @@
 use super::{L10nRegistry, L10nRegistryLocked};
-use crate::fluent::{FluentBundle, FluentResource, FluentError};
+use crate::fluent::{FluentBundle, FluentError, FluentResource};
 use crate::solver::{SerialProblemSolver, SyncTester};
 use fluent_fallback::generator::BundleIterator;
 use std::rc::Rc;
@@ -36,12 +36,15 @@ impl<'a> L10nRegistryLocked<'a> {
     }
 }
 
-impl L10nRegistry {
+impl<P> L10nRegistry<P>
+where
+    P: Clone,
+{
     pub fn generate_bundles_for_lang_sync(
         &self,
         langid: LanguageIdentifier,
         resource_ids: Vec<String>,
-    ) -> GenerateBundlesSync {
+    ) -> GenerateBundlesSync<P> {
         let lang_ids = vec![langid];
 
         GenerateBundlesSync::new(self.clone(), lang_ids, resource_ids)
@@ -51,7 +54,7 @@ impl L10nRegistry {
         &self,
         lang_ids: Vec<LanguageIdentifier>,
         resource_ids: Vec<String>,
-    ) -> GenerateBundlesSync {
+    ) -> GenerateBundlesSync<P> {
         GenerateBundlesSync::new(self.clone(), lang_ids, resource_ids)
     }
 }
@@ -95,15 +98,15 @@ impl State {
     }
 }
 
-pub struct GenerateBundlesSync {
-    reg: L10nRegistry,
+pub struct GenerateBundlesSync<P> {
+    reg: L10nRegistry<P>,
     locales: <Vec<LanguageIdentifier> as IntoIterator>::IntoIter,
     res_ids: Vec<String>,
     state: State,
 }
 
-impl GenerateBundlesSync {
-    fn new(reg: L10nRegistry, locales: Vec<LanguageIdentifier>, res_ids: Vec<String>) -> Self {
+impl<P> GenerateBundlesSync<P> {
+    fn new(reg: L10nRegistry<P>, locales: Vec<LanguageIdentifier>, res_ids: Vec<String>) -> Self {
         Self {
             reg,
             locales: locales.into_iter(),
@@ -113,7 +116,7 @@ impl GenerateBundlesSync {
     }
 }
 
-impl SyncTester for GenerateBundlesSync {
+impl<P> SyncTester for GenerateBundlesSync<P> {
     fn test_sync(&self, res_idx: usize, source_idx: usize) -> bool {
         let locale = self.state.get_locale();
         let res = &self.res_ids[res_idx];
@@ -125,11 +128,11 @@ impl SyncTester for GenerateBundlesSync {
     }
 }
 
-impl BundleIterator for GenerateBundlesSync {
+impl<P> BundleIterator for GenerateBundlesSync<P> {
     type Resource = Rc<FluentResource>;
 }
 
-impl Iterator for GenerateBundlesSync {
+impl<P> Iterator for GenerateBundlesSync<P> {
     type Item = Result<FluentBundle, (FluentBundle, Vec<FluentError>)>;
 
     fn next(&mut self) -> Option<Self::Item> {

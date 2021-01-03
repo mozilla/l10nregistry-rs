@@ -1,5 +1,5 @@
-use std::io;
 use async_trait::async_trait;
+use std::io;
 
 /// The users of [`FileSource`] implement this trait to provide loading of
 /// resources, returning the contents of a resource as a
