@@ -10,7 +10,7 @@ use crate::source::FileSource;
 
 use chunky_vec::ChunkyVec;
 use fluent_bundle::FluentResource;
-use fluent_fallback::{BundleGenerator, BundleGeneratorSync};
+use fluent_fallback::generator::BundleGenerator;
 use unic_langid::LanguageIdentifier;
 
 pub use asynchronous::GenerateBundles;
@@ -92,18 +92,14 @@ impl L10nRegistry {
 
 impl BundleGenerator for L10nRegistry {
     type Resource = Rc<FluentResource>;
+    type Iter = GenerateBundlesSync;
     type Stream = GenerateBundles;
 
-    fn bundles(&self, resource_ids: Vec<String>) -> Self::Stream {
+    fn bundles_stream(&self, resource_ids: Vec<String>) -> Self::Stream {
         self.generate_bundles(self.shared.lang_ids.clone(), resource_ids)
     }
-}
 
-impl BundleGeneratorSync for L10nRegistry {
-    type Resource = Rc<FluentResource>;
-    type Iter = GenerateBundlesSync;
-
-    fn bundles_sync(&self, resource_ids: Vec<String>) -> Self::Iter {
+    fn bundles_iter(&self, resource_ids: Vec<String>) -> Self::Iter {
         self.generate_bundles_sync(self.shared.lang_ids.clone(), resource_ids)
     }
 }

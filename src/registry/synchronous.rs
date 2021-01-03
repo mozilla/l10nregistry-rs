@@ -1,6 +1,8 @@
 use super::{L10nRegistry, L10nRegistryLocked};
-use crate::fluent::{FluentBundle, FluentError};
+use crate::fluent::{FluentBundle, FluentResource, FluentError};
 use crate::solver::{SerialProblemSolver, SyncTester};
+use fluent_fallback::generator::BundleIterator;
+use std::rc::Rc;
 
 use unic_langid::LanguageIdentifier;
 
@@ -121,6 +123,10 @@ impl SyncTester for GenerateBundlesSync {
             .fetch_file_sync(locale, res)
             .is_some()
     }
+}
+
+impl BundleIterator for GenerateBundlesSync {
+    type Resource = Rc<FluentResource>;
 }
 
 impl Iterator for GenerateBundlesSync {
