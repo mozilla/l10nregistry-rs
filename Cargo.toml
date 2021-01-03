@@ -12,7 +12,6 @@ fluent-bundle = { git = "https://github.com/projectfluent/fluent-rs" }
 fluent-fallback = { git = "https://github.com/projectfluent/fluent-rs" }
 fluent-testing = { path = "../fluent-rs/fluent-testing", features = ["sync", "async"] }
 futures = "0.3"
-itertools = "0.9"
 log = "0.4"
 pin-project = "1.0"
 unic-langid = "0.9"

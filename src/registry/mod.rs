@@ -3,8 +3,6 @@ mod synchronous;
 
 use std::{
     cell::{Ref, RefCell},
-    iter::Rev,
-    ops::Range,
     rc::Rc,
 };
 
@@ -13,25 +11,12 @@ use crate::source::FileSource;
 use chunky_vec::ChunkyVec;
 use fluent_bundle::FluentResource;
 use fluent_fallback::{BundleGenerator, BundleGeneratorSync};
-use itertools::Itertools;
 use unic_langid::LanguageIdentifier;
 
 pub use asynchronous::GenerateBundles;
 pub use synchronous::GenerateBundlesSync;
 
 pub type FluentResourceSet = Vec<Rc<FluentResource>>;
-
-/// Generate a permutation of all registered source file indices for `length`
-/// in reverse order. ie. The last source added to the registry with `add_source`
-/// is returned first.
-pub fn permute_iter(
-    source_count: usize,
-    length: usize,
-) -> itertools::MultiProduct<Rev<Range<usize>>> {
-    (0..length)
-        .map(|_| (0..source_count).rev())
-        .multi_cartesian_product()
-}
 
 #[derive(Default)]
 struct Shared {
