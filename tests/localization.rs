@@ -77,7 +77,7 @@ fn localization_format_value_sync() {
     for query in &[L10N_ID_PL_EN, L10N_ID_MISSING, L10N_ID_ONLY_EN] {
         let value = loc.format_value_sync(query.0, None, &mut errors);
         let result = query.1.unwrap_or(query.0);
-        assert_eq!(value, result);
+        assert_eq!(value.unwrap(), result);
     }
 }
 
@@ -96,7 +96,7 @@ fn localization_format_values_sync() {
         })
         .collect::<Vec<_>>();
 
-    let values = loc.format_values_sync(&keys, &mut errors);
+    let values = loc.format_values_sync(&keys, &mut errors).unwrap();
 
     assert_eq!(values.len(), ids.len());
 
@@ -152,7 +152,7 @@ async fn localization_upgrade() {
     let mut errors = vec![];
     let value = loc.format_value_sync(L10N_ID_PL_EN.0, None, &mut errors);
     let expected = L10N_ID_PL_EN.1.unwrap_or(L10N_ID_PL_EN.0);
-    assert_eq!(value, expected);
+    assert_eq!(value.unwrap(), expected);
 
     loc.set_async();
     let value = loc.format_value(L10N_ID_PL_EN.0, None, &mut errors).await;
