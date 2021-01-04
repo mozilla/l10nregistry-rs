@@ -9,6 +9,7 @@ use std::{
 use crate::source::FileSource;
 
 use crate::environment::{ErrorReporter, LocalesProvider};
+use crate::fluent::FluentBundle;
 use chunky_vec::ChunkyVec;
 use fluent_bundle::FluentResource;
 use fluent_fallback::generator::BundleGenerator;
@@ -23,10 +24,12 @@ pub type FluentResourceSet = Vec<Rc<FluentResource>>;
 struct Shared<P> {
     sources: RefCell<ChunkyVec<FileSource>>,
     provider: P,
+    adapt_bundle: Option<fn(&mut FluentBundle)>,
 }
 
 pub struct L10nRegistryLocked<'a> {
     lock: Ref<'a, ChunkyVec<FileSource>>,
+    adapt_bundle: Option<fn(&mut FluentBundle)>,
 }
 
 impl<'a> L10nRegistryLocked<'a> {
@@ -71,13 +74,20 @@ impl<P> L10nRegistry<P> {
             shared: Rc::new(Shared {
                 sources: Default::default(),
                 provider,
+                adapt_bundle: None,
             }),
         }
+    }
+
+    pub fn set_adapt_bundle(&mut self, adapt_bundle: fn(&mut FluentBundle)) {
+        let shared = Rc::get_mut(&mut self.shared).unwrap();
+        shared.adapt_bundle = Some(adapt_bundle);
     }
 
     pub fn lock(&self) -> L10nRegistryLocked<'_> {
         L10nRegistryLocked {
             lock: self.shared.sources.borrow(),
+            adapt_bundle: self.shared.adapt_bundle,
         }
     }
 

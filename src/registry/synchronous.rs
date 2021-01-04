@@ -15,6 +15,10 @@ impl<'a> L10nRegistryLocked<'a> {
     ) -> Option<Result<FluentBundle, (FluentBundle, Vec<FluentError>)>> {
         let mut bundle = FluentBundle::new(vec![locale.clone()]);
 
+        if let Some(adapt_bundle) = self.adapt_bundle {
+            adapt_bundle(&mut bundle);
+        }
+
         let mut errors = vec![];
 
         for (&source_idx, path) in source_order.iter().zip(res_ids.iter()) {

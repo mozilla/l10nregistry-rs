@@ -53,3 +53,8 @@ required-features = ["tokio", "fluent-testing"]
 name = "localization"
 path = "tests/localization.rs"
 required-features = ["tokio", "fluent-testing"]
+
+[[test]]
+name = "scenarios"
+path = "tests/scenarios.rs"
+required-features = ["tokio", "fluent-testing"]
