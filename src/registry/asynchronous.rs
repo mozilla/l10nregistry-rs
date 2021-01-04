@@ -168,6 +168,7 @@ impl<P> Stream for GenerateBundles<P> {
                     }
                     std::task::Poll::Pending => {
                         self.state.put_back_solver(solver);
+                        return std::task::Poll::Pending;
                     }
                 }
             } else if let Some(locale) = self.locales.next() {
