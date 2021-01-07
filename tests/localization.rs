@@ -75,9 +75,8 @@ fn localization_format_value_sync() {
     let mut errors = vec![];
 
     for query in &[L10N_ID_PL_EN, L10N_ID_MISSING, L10N_ID_ONLY_EN] {
-        let value = loc.format_value_sync(query.0, None, &mut errors);
-        let result = query.1.unwrap_or(query.0);
-        assert_eq!(value.unwrap(), result);
+        let value = loc.format_value_sync(query.0, None, &mut errors).unwrap();
+        assert_eq!(value, query.1.map(|s| Cow::Borrowed(s)));
     }
 }
 
@@ -101,8 +100,9 @@ fn localization_format_values_sync() {
     assert_eq!(values.len(), ids.len());
 
     for (value, query) in values.iter().zip(ids) {
-        let result = query.1.unwrap_or(query.0);
-        assert_eq!(value.clone(), Cow::Borrowed(result));
+        if let Some(expected) = query.1 {
+            assert_eq!(*value, Some(Cow::Borrowed(expected)));
+        }
     }
     assert_eq!(errors.len(), 1);
 }
@@ -115,8 +115,9 @@ async fn localization_format_value_async() {
 
     for query in &[L10N_ID_PL_EN, L10N_ID_MISSING, L10N_ID_ONLY_EN] {
         let value = loc.format_value(query.0, None, &mut errors).await;
-        let result = query.1.unwrap_or(query.0);
-        assert_eq!(value, result);
+        if let Some(expected) = query.1 {
+            assert_eq!(value, Some(Cow::Borrowed(expected)));
+        }
     }
 }
 
@@ -140,8 +141,9 @@ async fn localization_format_values_async() {
     assert_eq!(values.len(), ids.len());
 
     for (value, query) in values.iter().zip(ids) {
-        let result = query.1.unwrap_or(query.0);
-        assert_eq!(value.clone(), Cow::Borrowed(result));
+        if let Some(expected) = query.1 {
+            assert_eq!(*value, Some(Cow::Borrowed(expected)));
+        }
     }
 }
 
@@ -150,12 +152,10 @@ async fn localization_format_values_async() {
 async fn localization_upgrade() {
     let mut loc = setup_sync_test();
     let mut errors = vec![];
-    let value = loc.format_value_sync(L10N_ID_PL_EN.0, None, &mut errors);
-    let expected = L10N_ID_PL_EN.1.unwrap_or(L10N_ID_PL_EN.0);
-    assert_eq!(value.unwrap(), expected);
+    let value = loc.format_value_sync(L10N_ID_PL_EN.0, None, &mut errors).unwrap();
+    assert_eq!(value, L10N_ID_PL_EN.1.map(|s| Cow::Borrowed(s)));
 
     loc.set_async();
     let value = loc.format_value(L10N_ID_PL_EN.0, None, &mut errors).await;
-    let expected = L10N_ID_PL_EN.1.unwrap_or(L10N_ID_PL_EN.0);
-    assert_eq!(value, expected);
+    assert_eq!(value, L10N_ID_PL_EN.1.map(|s| Cow::Borrowed(s)));
 }

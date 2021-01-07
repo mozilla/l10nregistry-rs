@@ -132,9 +132,7 @@ impl<P> SyncTester for GenerateBundlesSync<P> {
     }
 }
 
-impl<P> BundleIterator for GenerateBundlesSync<P> {
-    type Resource = Rc<FluentResource>;
-}
+impl<P> BundleIterator<Rc<FluentResource>> for GenerateBundlesSync<P> {}
 
 impl<P> Iterator for GenerateBundlesSync<P> {
     type Item = Result<FluentBundle, (FluentBundle, Vec<FluentError>)>;

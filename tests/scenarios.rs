@@ -34,7 +34,7 @@ fn scenarios_test() {
             if let Some(output) = &query.output {
                 if let Some(value) = &output.value {
                     let v = loc.format_value_sync(&query.input.id, args.as_ref(), &mut errors);
-                    assert_eq!(v.unwrap(), value.as_str());
+                    assert_eq!(v.unwrap().unwrap(), value.as_str());
                 }
             }
             assert_eq!(errors, vec![]);

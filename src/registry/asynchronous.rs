@@ -134,9 +134,7 @@ impl<'l, P> AsyncTester for GenerateBundles<P> {
     }
 }
 
-impl<P> BundleStream for GenerateBundles<P> {
-    type Resource = Rc<FluentResource>;
-}
+impl<P> BundleStream<Rc<FluentResource>> for GenerateBundles<P> {}
 
 impl<P> Stream for GenerateBundles<P> {
     type Item = Result<FluentBundle, (FluentBundle, Vec<FluentError>)>;
