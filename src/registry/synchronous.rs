@@ -1,8 +1,6 @@
 use super::{L10nRegistry, L10nRegistryLocked};
-use crate::fluent::{FluentBundle, FluentError, FluentResource};
+use crate::fluent::{FluentBundle, FluentError};
 use crate::solver::{SerialProblemSolver, SyncTester};
-use fluent_fallback::generator::BundleIterator;
-use std::rc::Rc;
 
 use unic_langid::LanguageIdentifier;
 
@@ -131,8 +129,6 @@ impl<P> SyncTester for GenerateBundlesSync<P> {
             .is_some()
     }
 }
-
-impl<P> BundleIterator<Rc<FluentResource>> for GenerateBundlesSync<P> {}
 
 impl<P> Iterator for GenerateBundlesSync<P> {
     type Item = Result<FluentBundle, (FluentBundle, Vec<FluentError>)>;

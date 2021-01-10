@@ -6,17 +6,15 @@ use std::{
 use super::{L10nRegistry, L10nRegistryLocked};
 use crate::solver::{AsyncTester, ParallelProblemSolver};
 use crate::{
-    fluent::{FluentBundle, FluentError, FluentResource},
+    fluent::{FluentBundle, FluentError},
     source::{ResourceOption, ResourceStatus},
 };
 
-use fluent_fallback::generator::BundleStream;
 use futures::{
     stream::{Collect, FuturesOrdered},
     Stream, StreamExt,
 };
 use std::future::Future;
-use std::rc::Rc;
 use unic_langid::LanguageIdentifier;
 
 impl<'a> L10nRegistryLocked<'a> {}
@@ -133,8 +131,6 @@ impl<'l, P> AsyncTester for GenerateBundles<P> {
         TestResult(stream.collect())
     }
 }
-
-impl<P> BundleStream<Rc<FluentResource>> for GenerateBundles<P> {}
 
 impl<P> Stream for GenerateBundles<P> {
     type Item = Result<FluentBundle, (FluentBundle, Vec<FluentError>)>;

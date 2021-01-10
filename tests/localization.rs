@@ -152,7 +152,9 @@ async fn localization_format_values_async() {
 async fn localization_upgrade() {
     let mut loc = setup_sync_test();
     let mut errors = vec![];
-    let value = loc.format_value_sync(L10N_ID_PL_EN.0, None, &mut errors).unwrap();
+    let value = loc
+        .format_value_sync(L10N_ID_PL_EN.0, None, &mut errors)
+        .unwrap();
     assert_eq!(value, L10N_ID_PL_EN.1.map(|s| Cow::Borrowed(s)));
 
     loc.set_async();
