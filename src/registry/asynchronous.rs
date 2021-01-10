@@ -10,6 +10,7 @@ use crate::{
     source::{ResourceOption, ResourceStatus},
 };
 
+use fluent_fallback::generator::BundleStream;
 use futures::{
     stream::{Collect, FuturesOrdered},
     Stream, StreamExt,
@@ -132,6 +133,13 @@ impl<'l, P> AsyncTester for GenerateBundles<P> {
     }
 }
 
+#[async_trait::async_trait(?Send)]
+impl<P> BundleStream for GenerateBundles<P> {
+    async fn prefetch_async(&mut self) {
+        todo!();
+    }
+}
+
 impl<P> Stream for GenerateBundles<P> {
     type Item = Result<FluentBundle, (FluentBundle, Vec<FluentError>)>;
 
@@ -140,7 +148,7 @@ impl<P> Stream for GenerateBundles<P> {
             if let State::Solver { .. } = self.state {
                 let mut solver = self.state.take_solver();
                 let pinned_solver = Pin::new(&mut solver);
-                match pinned_solver.poll_next(cx, &self) {
+                match pinned_solver.poll_next(cx, &self, false) {
                     std::task::Poll::Ready(order) => {
                         if let Some(order) = order {
                             let locale = self.state.get_locale();

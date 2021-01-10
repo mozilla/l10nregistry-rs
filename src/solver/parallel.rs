@@ -99,6 +99,7 @@ impl<T: AsyncTester> ParallelProblemSolver<T> {
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
         tester: &T,
+        prefetch: bool,
     ) -> std::task::Poll<Option<Vec<usize>>>
     where
         <T as AsyncTester>::Result: Unpin,
@@ -123,7 +124,9 @@ impl<T: AsyncTester> ParallelProblemSolver<T> {
                     continue 'outer;
                 } else {
                     self.current_test = None;
-                    self.dirty = true;
+                    if !prefetch {
+                        self.dirty = true;
+                    }
                     return Some(self.solution.clone()).into();
                 }
             } else {

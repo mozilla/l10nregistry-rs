@@ -1,6 +1,7 @@
 use super::{L10nRegistry, L10nRegistryLocked};
 use crate::fluent::{FluentBundle, FluentError};
 use crate::solver::{SerialProblemSolver, SyncTester};
+use fluent_fallback::generator::BundleIterator;
 
 use unic_langid::LanguageIdentifier;
 
@@ -130,6 +131,22 @@ impl<P> SyncTester for GenerateBundlesSync<P> {
     }
 }
 
+impl<P> BundleIterator for GenerateBundlesSync<P> {
+    fn prefetch_sync(&mut self) {
+        if let State::Solver { .. } = self.state {
+            let mut solver = self.state.take_solver();
+            solver.next(self, true);
+            self.state.put_back_solver(solver);
+            return;
+        }
+
+        if let Some(locale) = self.locales.next() {
+            let solver = SerialProblemSolver::new(self.res_ids.len(), self.reg.lock().len());
+            self.state = State::Solver { locale, solver };
+        }
+    }
+}
+
 impl<P> Iterator for GenerateBundlesSync<P> {
     type Item = Result<FluentBundle, (FluentBundle, Vec<FluentError>)>;
 
@@ -137,7 +154,7 @@ impl<P> Iterator for GenerateBundlesSync<P> {
         loop {
             if let State::Solver { .. } = self.state {
                 let mut solver = self.state.take_solver();
-                if let Some(order) = solver.next(self) {
+                if let Some(order) = solver.next(self, false) {
                     let locale = self.state.get_locale();
                     let bundle =
                         self.reg

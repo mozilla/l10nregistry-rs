@@ -42,7 +42,7 @@ impl SerialProblemSolver {
         }
     }
 
-    pub fn next<T>(&mut self, tester: &T) -> Option<&[usize]>
+    pub fn next<T>(&mut self, tester: &T, prefetch: bool) -> Option<&[usize]>
     where
         T: SyncTester,
     {
@@ -63,7 +63,9 @@ impl SerialProblemSolver {
                 continue;
             }
             if self.is_complete() {
-                self.dirty = true;
+                if !prefetch {
+                    self.dirty = true;
+                }
                 return Some(&self.solution);
             }
             if !self.try_advance_resource() {
