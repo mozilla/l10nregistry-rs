@@ -1,4 +1,6 @@
 use super::{L10nRegistry, L10nRegistryLocked};
+use crate::environment::ErrorReporter;
+use crate::errors::L10nRegistryError;
 use crate::fluent::{FluentBundle, FluentError};
 use crate::solver::{SerialProblemSolver, SyncTester};
 use fluent_fallback::generator::BundleIterator;
@@ -6,12 +8,16 @@ use fluent_fallback::generator::BundleIterator;
 use unic_langid::LanguageIdentifier;
 
 impl<'a> L10nRegistryLocked<'a> {
-    pub(crate) fn bundle_from_order(
+    pub(crate) fn bundle_from_order<P>(
         &self,
         locale: LanguageIdentifier,
         source_order: &[usize],
         res_ids: &[String],
-    ) -> Option<Result<FluentBundle, (FluentBundle, Vec<FluentError>)>> {
+        error_reporter: &P,
+    ) -> Option<Result<FluentBundle, (FluentBundle, Vec<FluentError>)>>
+    where
+        P: ErrorReporter,
+    {
         let mut bundle = FluentBundle::new(vec![locale.clone()]);
 
         if let Some(adapt_bundle) = self.adapt_bundle {
@@ -24,18 +30,20 @@ impl<'a> L10nRegistryLocked<'a> {
             let source = self.source_idx(source_idx);
             if let Some(res) = source.fetch_file_sync(&locale, path, false) {
                 if let Err(err) = bundle.add_resource(res) {
-                    errors.extend(err);
+                    errors.extend(err.into_iter().map(|error| L10nRegistryError::FluentError {
+                        path: path.clone(),
+                        error,
+                    }));
                 }
             } else {
                 return None;
             }
         }
 
-        if errors.is_empty() {
-            Some(Ok(bundle))
-        } else {
-            Some(Err((bundle, errors)))
+        if !errors.is_empty() {
+            error_reporter.report_errors(errors);
         }
+        Some(Ok(bundle))
     }
 }
 
@@ -141,13 +149,17 @@ impl<P> BundleIterator for GenerateBundlesSync<P> {
         }
 
         if let Some(locale) = self.locales.next() {
-            let solver = SerialProblemSolver::new(self.res_ids.len(), self.reg.lock().len());
+            let mut solver = SerialProblemSolver::new(self.res_ids.len(), self.reg.lock().len());
+            solver.next(self, true);
             self.state = State::Solver { locale, solver };
         }
     }
 }
 
-impl<P> Iterator for GenerateBundlesSync<P> {
+impl<P> Iterator for GenerateBundlesSync<P>
+where
+    P: ErrorReporter,
+{
     type Item = Result<FluentBundle, (FluentBundle, Vec<FluentError>)>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -156,10 +168,12 @@ impl<P> Iterator for GenerateBundlesSync<P> {
                 let mut solver = self.state.take_solver();
                 if let Some(order) = solver.next(self, false) {
                     let locale = self.state.get_locale();
-                    let bundle =
-                        self.reg
-                            .lock()
-                            .bundle_from_order(locale.clone(), order, &self.res_ids);
+                    let bundle = self.reg.lock().bundle_from_order(
+                        locale.clone(),
+                        order,
+                        &self.res_ids,
+                        &self.reg.shared.provider,
+                    );
                     self.state.put_back_solver(solver);
                     if bundle.is_some() {
                         return bundle;

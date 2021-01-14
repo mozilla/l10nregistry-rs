@@ -6,6 +6,7 @@ use std::{
 use super::{L10nRegistry, L10nRegistryLocked};
 use crate::solver::{AsyncTester, ParallelProblemSolver};
 use crate::{
+    environment::ErrorReporter,
     fluent::{FluentBundle, FluentError},
     source::{ResourceOption, ResourceStatus},
 };
@@ -140,7 +141,10 @@ impl<P> BundleStream for GenerateBundles<P> {
     }
 }
 
-impl<P> Stream for GenerateBundles<P> {
+impl<P> Stream for GenerateBundles<P>
+where
+    P: ErrorReporter,
+{
     type Item = Result<FluentBundle, (FluentBundle, Vec<FluentError>)>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
@@ -156,6 +160,7 @@ impl<P> Stream for GenerateBundles<P> {
                                 locale.clone(),
                                 &order,
                                 &self.res_ids,
+                                &self.reg.shared.provider,
                             );
                             self.state.put_back_solver(solver);
                             if bundle.is_some() {
