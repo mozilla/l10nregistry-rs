@@ -7,6 +7,7 @@ use super::{L10nRegistry, L10nRegistryLocked};
 use crate::solver::{AsyncTester, ParallelProblemSolver};
 use crate::{
     environment::ErrorReporter,
+    errors::L10nRegistryError,
     fluent::{FluentBundle, FluentError},
     source::{ResourceOption, ResourceStatus},
 };
@@ -152,9 +153,9 @@ where
             if let State::Solver { .. } = self.state {
                 let mut solver = self.state.take_solver();
                 let pinned_solver = Pin::new(&mut solver);
-                match pinned_solver.poll_next(cx, &self, false) {
-                    std::task::Poll::Ready(order) => {
-                        if let Some(order) = order {
+                match pinned_solver.try_poll_next(cx, &self, false) {
+                    std::task::Poll::Ready(order) => match order {
+                        Ok(Some(order)) => {
                             let locale = self.state.get_locale();
                             let bundle = self.reg.lock().bundle_from_order(
                                 locale.clone(),
@@ -168,11 +169,22 @@ where
                             } else {
                                 continue;
                             }
-                        } else {
+                        }
+                        Ok(None) => {
                             self.state = State::Empty;
                             continue;
                         }
-                    }
+                        Err(idx) => {
+                            self.reg.shared.provider.report_errors(vec![
+                                L10nRegistryError::MissingResource {
+                                    locale: self.state.get_locale().clone(),
+                                    res_id: self.res_ids[idx].clone(),
+                                },
+                            ]);
+                            self.state = State::Empty;
+                            continue;
+                        }
+                    },
                     std::task::Poll::Pending => {
                         self.state.put_back_solver(solver);
                         return std::task::Poll::Pending;

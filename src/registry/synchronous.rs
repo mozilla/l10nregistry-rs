@@ -139,18 +139,37 @@ impl<P> SyncTester for GenerateBundlesSync<P> {
     }
 }
 
-impl<P> BundleIterator for GenerateBundlesSync<P> {
+impl<P> BundleIterator for GenerateBundlesSync<P>
+where
+    P: ErrorReporter,
+{
     fn prefetch_sync(&mut self) {
         if let State::Solver { .. } = self.state {
             let mut solver = self.state.take_solver();
-            solver.next(self, true);
+            if let Err(idx) = solver.try_next(self, true) {
+                self.reg
+                    .shared
+                    .provider
+                    .report_errors(vec![L10nRegistryError::MissingResource {
+                        locale: self.state.get_locale().clone(),
+                        res_id: self.res_ids[idx].clone(),
+                    }]);
+            }
             self.state.put_back_solver(solver);
             return;
         }
 
         if let Some(locale) = self.locales.next() {
             let mut solver = SerialProblemSolver::new(self.res_ids.len(), self.reg.lock().len());
-            solver.next(self, true);
+            if let Err(idx) = solver.try_next(self, true) {
+                self.reg
+                    .shared
+                    .provider
+                    .report_errors(vec![L10nRegistryError::MissingResource {
+                        locale: self.state.get_locale().clone(),
+                        res_id: self.res_ids[idx].clone(),
+                    }]);
+            }
             self.state = State::Solver { locale, solver };
         }
     }
@@ -166,19 +185,30 @@ where
         loop {
             if let State::Solver { .. } = self.state {
                 let mut solver = self.state.take_solver();
-                if let Some(order) = solver.next(self, false) {
-                    let locale = self.state.get_locale();
-                    let bundle = self.reg.lock().bundle_from_order(
-                        locale.clone(),
-                        order,
-                        &self.res_ids,
-                        &self.reg.shared.provider,
-                    );
-                    self.state.put_back_solver(solver);
-                    if bundle.is_some() {
-                        return bundle;
-                    } else {
-                        continue;
+                match solver.try_next(self, false) {
+                    Ok(Some(order)) => {
+                        let locale = self.state.get_locale();
+                        let bundle = self.reg.lock().bundle_from_order(
+                            locale.clone(),
+                            order,
+                            &self.res_ids,
+                            &self.reg.shared.provider,
+                        );
+                        self.state.put_back_solver(solver);
+                        if bundle.is_some() {
+                            return bundle;
+                        } else {
+                            continue;
+                        }
+                    }
+                    Ok(None) => {}
+                    Err(idx) => {
+                        self.reg.shared.provider.report_errors(vec![
+                            L10nRegistryError::MissingResource {
+                                locale: self.state.get_locale().clone(),
+                                res_id: self.res_ids[idx].clone(),
+                            },
+                        ]);
                     }
                 }
                 self.state = State::Empty;

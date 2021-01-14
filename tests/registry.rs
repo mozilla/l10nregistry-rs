@@ -16,7 +16,7 @@ fn test_generate_sources_for_file() {
         vec![en_us.clone()],
     );
     let fetcher = TestFileFetcher::new();
-    let reg = fetcher.get_registry(setup);
+    let (_, reg) = fetcher.get_registry_and_environment(setup);
 
     {
         let lock = reg.lock();
@@ -60,7 +60,7 @@ fn test_generate_bundles_for_lang_sync() {
         vec![en_us.clone()],
     );
     let fetcher = TestFileFetcher::new();
-    let reg = fetcher.get_registry(setup);
+    let (_, reg) = fetcher.get_registry_and_environment(setup);
 
     let paths = vec![FTL_RESOURCE_TOOLKIT.into(), FTL_RESOURCE_BROWSER.into()];
     let mut i = reg.generate_bundles_for_lang_sync(en_us.clone(), paths);
@@ -81,7 +81,7 @@ fn test_generate_bundles_sync() {
         vec![en_us.clone()],
     );
     let fetcher = TestFileFetcher::new();
-    let reg = fetcher.get_registry(setup);
+    let (_, reg) = fetcher.get_registry_and_environment(setup);
 
     let paths = vec![FTL_RESOURCE_TOOLKIT.into(), FTL_RESOURCE_BROWSER.into()];
     let lang_ids = vec![en_us];
@@ -105,7 +105,7 @@ async fn test_generate_bundles_for_lang() {
         vec![en_us.clone()],
     );
     let fetcher = TestFileFetcher::new();
-    let reg = fetcher.get_registry(setup);
+    let (_, reg) = fetcher.get_registry_and_environment(setup);
 
     let paths = vec![FTL_RESOURCE_TOOLKIT.into(), FTL_RESOURCE_BROWSER.into()];
     let mut i = reg.generate_bundles_for_lang(en_us, paths);
@@ -128,7 +128,7 @@ async fn test_generate_bundles() {
         vec![en_us.clone()],
     );
     let fetcher = TestFileFetcher::new();
-    let reg = fetcher.get_registry(setup);
+    let (_, reg) = fetcher.get_registry_and_environment(setup);
 
     let paths = vec![FTL_RESOURCE_TOOLKIT.into(), FTL_RESOURCE_BROWSER.into()];
     let langs = vec![en_us];

@@ -38,7 +38,7 @@ fn get_l10n_registry() -> &'static L10nRegistry {
             ],
             get_app_locales().to_vec(),
         );
-        fetcher.get_registry(setup)
+        fetcher.get_registry_and_environment(setup).1
     })
 }
 
@@ -78,6 +78,8 @@ fn localization_format_value_sync() {
         let value = loc.format_value_sync(query.0, None, &mut errors).unwrap();
         assert_eq!(value, query.1.map(|s| Cow::Borrowed(s)));
     }
+
+    assert_eq!(errors.len(), 1);
 }
 
 #[test]
