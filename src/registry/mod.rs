@@ -46,7 +46,8 @@ impl<'a> L10nRegistryLocked<'a> {
     }
 
     pub fn source_idx(&self, index: usize) -> &FileSource {
-        self.lock.get(index).expect("Index out-of-range")
+        let rev_idx = self.len() - 1 - index;
+        self.lock.get(rev_idx).expect("Index out-of-range")
     }
 
     pub fn get_source(&self, name: &str) -> Option<&FileSource> {

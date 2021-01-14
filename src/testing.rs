@@ -121,7 +121,10 @@ impl TestFileFetcher {
         crate::source::FileSource::new(name.to_string(), locales, path.to_string(), self.clone())
     }
 
-    pub fn get_registry<S>(&self, setup: S) -> L10nRegistry<TestEnvironment>
+    pub fn get_registry_and_environment<S>(
+        &self,
+        setup: S,
+    ) -> (TestEnvironment, L10nRegistry<TestEnvironment>)
     where
         S: Into<RegistrySetup>,
     {
@@ -140,7 +143,7 @@ impl TestFileFetcher {
             })
             .collect();
         reg.register_sources(sources).unwrap();
-        reg
+        (provider, reg)
     }
 }
 
@@ -204,6 +207,7 @@ impl LocalesProvider for TestEnvironment {
 
 impl ErrorReporter for TestEnvironment {
     fn report_errors(&self, errors: Vec<L10nRegistryError>) {
+        panic!("Errors: {:#?}", errors);
         match self.inner.borrow().error_strategy {
             ErrorStrategy::Panic => {
                 panic!("Errors: {:#?}", errors);

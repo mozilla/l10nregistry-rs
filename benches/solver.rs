@@ -78,7 +78,9 @@ impl<'t> futures::stream::Stream for TestStream<'t> {
         let tester = self.tester;
         let solver = &mut self.solver;
         let pinned = std::pin::Pin::new(solver);
-        pinned.poll_next(cx, tester, false)
+        pinned
+            .try_poll_next(cx, tester, false)
+            .map(|v| v.ok().flatten())
     }
 }
 
@@ -95,7 +97,7 @@ fn solver_bench(c: &mut Criterion) {
         group.bench_function(&format!("serial/{}", &scenario.name), |b| {
             b.iter(|| {
                 let mut gen = SerialProblemSolver::new(scenario.width, scenario.depth);
-                while let Some(_) = gen.next(&tester, false) {}
+                while let Ok(Some(_)) = gen.try_next(&tester, false) {}
             })
         });
 

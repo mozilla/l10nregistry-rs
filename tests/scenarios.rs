@@ -11,7 +11,7 @@ fn scenarios_test() {
 
     for scenario in scenarios {
         let setup: RegistrySetup = (&scenario).into();
-        let mut reg = fetcher.get_registry(setup);
+        let (env, mut reg) = fetcher.get_registry_and_environment(setup);
 
         reg.set_adapt_bundle(|bundle| {
             bundle.set_use_isolating(false);
@@ -39,5 +39,6 @@ fn scenarios_test() {
             }
             assert_eq!(errors, vec![]);
         }
+        assert_eq!(env.errors(), vec![]);
     }
 }

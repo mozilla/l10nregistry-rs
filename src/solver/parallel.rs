@@ -85,27 +85,28 @@ impl<T: AsyncTester> ParallelProblemSolver<T> {
     ) -> Result<(), usize> {
         for (missing_idx, res) in resources.iter().enumerate() {
             let res_idx = testing_cells[missing_idx];
+            let source_idx = self.solution[res_idx];
             if *res {
-                let source_idx = self.solution[res_idx];
                 self.cache[res_idx][source_idx] = Some(true);
             } else {
+                self.cache[res_idx][source_idx] = Some(false);
                 return Err(res_idx);
             }
         }
         Ok(())
     }
 
-    pub fn poll_next(
+    pub fn try_poll_next(
         mut self: std::pin::Pin<&mut Self>,
         cx: &mut std::task::Context<'_>,
         tester: &T,
         prefetch: bool,
-    ) -> std::task::Poll<Option<Vec<usize>>>
+    ) -> std::task::Poll<Result<Option<Vec<usize>>, usize>>
     where
         <T as AsyncTester>::Result: Unpin,
     {
         if self.width == 0 || self.depth == 0 {
-            return None.into();
+            return Ok(None).into();
         }
 
         'outer: loop {
@@ -118,7 +119,11 @@ impl<T: AsyncTester> ParallelProblemSolver<T> {
                     self.idx = res_idx;
                     self.prune();
                     if !self.bail() {
-                        return None.into();
+                        if let Some(res_idx) = self.has_missing_cell() {
+                            return Err(res_idx).into();
+                        } else {
+                            return Ok(None).into();
+                        }
                     }
                     self.current_test = None;
                     continue 'outer;
@@ -127,12 +132,16 @@ impl<T: AsyncTester> ParallelProblemSolver<T> {
                     if !prefetch {
                         self.dirty = true;
                     }
-                    return Some(self.solution.clone()).into();
+                    return Ok(Some(self.solution.clone())).into();
                 }
             } else {
                 if self.dirty {
                     if !self.bail() {
-                        return None.into();
+                        if let Some(res_idx) = self.has_missing_cell() {
+                            return Err(res_idx).into();
+                        } else {
+                            return Ok(None).into();
+                        }
                     }
                     self.dirty = false;
                 }
@@ -146,12 +155,16 @@ impl<T: AsyncTester> ParallelProblemSolver<T> {
                             self.idx = res_idx;
                             self.prune();
                             if !self.bail() {
-                                return None.into();
+                                if let Some(res_idx) = self.has_missing_cell() {
+                                    return Err(res_idx).into();
+                                } else {
+                                    return Ok(None).into();
+                                }
                             }
                         }
                     }
                 }
-                return None.into();
+                return Ok(None).into();
             }
         }
     }

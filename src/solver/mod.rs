@@ -41,6 +41,15 @@ impl ProblemSolver {
         }
     }
 
+    pub fn has_missing_cell(&self) -> Option<usize> {
+        for res_idx in 0..self.width {
+            if self.cache[res_idx].iter().all(|c| *c == Some(false)) {
+                return Some(res_idx);
+            }
+        }
+        None
+    }
+
     fn is_cell_missing(&self, res_idx: usize, source_idx: usize) -> bool {
         if let Some(false) = self.cache[res_idx][source_idx] {
             return true;

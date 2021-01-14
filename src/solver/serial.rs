@@ -38,27 +38,33 @@ impl SerialProblemSolver {
         if let Some(val) = cell {
             *val
         } else {
-            tester.test_sync(res_idx, source_idx)
+            let result = tester.test_sync(res_idx, source_idx);
+            self.cache[res_idx][source_idx] = Some(result);
+            result
         }
     }
 
-    pub fn next<T>(&mut self, tester: &T, prefetch: bool) -> Option<&[usize]>
+    pub fn try_next<T>(&mut self, tester: &T, prefetch: bool) -> Result<Option<&[usize]>, usize>
     where
         T: SyncTester,
     {
         if self.width == 0 || self.depth == 0 {
-            return None;
+            return Ok(None);
         }
         if self.dirty {
             if !self.bail() {
-                return None;
+                return Ok(None);
             }
             self.dirty = false;
         }
         loop {
             if !self.test_current_cell(tester) {
                 if !self.bail() {
-                    return None;
+                    if let Some(res_idx) = self.has_missing_cell() {
+                        return Err(res_idx);
+                    } else {
+                        return Ok(None);
+                    }
                 }
                 continue;
             }
@@ -66,10 +72,10 @@ impl SerialProblemSolver {
                 if !prefetch {
                     self.dirty = true;
                 }
-                return Some(&self.solution);
+                return Ok(Some(&self.solution));
             }
             if !self.try_advance_resource() {
-                return None;
+                return Ok(None);
             }
         }
     }
