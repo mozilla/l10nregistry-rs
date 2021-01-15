@@ -34,12 +34,8 @@ impl SerialProblemSolver {
     {
         let res_idx = self.idx;
         let source_idx = self.solution[res_idx];
-        let cell = &self.cache[res_idx][source_idx];
-        if let Some(val) = cell {
-            *val
-        } else {
-            tester.test_sync(res_idx, source_idx)
-        }
+        let cell = &mut self.cache[res_idx][source_idx];
+        *cell.get_or_insert_with(|| tester.test_sync(res_idx, source_idx))
     }
 
     pub fn next<T>(&mut self, tester: &T, prefetch: bool) -> Option<&[usize]>

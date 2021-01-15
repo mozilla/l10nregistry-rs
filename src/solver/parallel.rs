@@ -81,18 +81,21 @@ impl<T: AsyncTester> ParallelProblemSolver<T> {
     fn apply_test_result(
         &mut self,
         resources: Vec<bool>,
-        testing_cells: &[usize],
+        testing_cells: Vec<usize>,
     ) -> Result<(), usize> {
-        for (missing_idx, res) in resources.iter().enumerate() {
-            let res_idx = testing_cells[missing_idx];
-            if *res {
-                let source_idx = self.solution[res_idx];
-                self.cache[res_idx][source_idx] = Some(true);
-            } else {
-                return Err(res_idx);
+        let mut first_missing = None;
+        for (result, res_idx) in resources.into_iter().zip(testing_cells) {
+            let source_idx = self.solution[res_idx];
+            self.cache[res_idx][source_idx] = Some(result);
+            if !result && first_missing.is_none() {
+                first_missing = Some(res_idx);
             }
         }
-        Ok(())
+        if let Some(idx) = first_missing {
+            Err(idx)
+        } else {
+            Ok(())
+        }
     }
 
     pub fn poll_next(
@@ -114,7 +117,7 @@ impl<T: AsyncTester> ParallelProblemSolver<T> {
                 let set = ready!(pinned.poll(cx));
                 let testing_cells = testing_cells.clone();
 
-                if let Err(res_idx) = self.apply_test_result(set, &testing_cells) {
+                if let Err(res_idx) = self.apply_test_result(set, testing_cells) {
                     self.idx = res_idx;
                     self.prune();
                     if !self.bail() {
