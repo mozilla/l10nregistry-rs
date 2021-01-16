@@ -161,16 +161,17 @@ where
 
         if let Some(locale) = self.locales.next() {
             let mut solver = SerialProblemSolver::new(self.res_ids.len(), self.reg.lock().len());
+            self.state = State::Locale(locale.clone());
             if let Err(idx) = solver.try_next(self, true) {
                 self.reg
                     .shared
                     .provider
                     .report_errors(vec![L10nRegistryError::MissingResource {
-                        locale: locale.clone(),
+                        locale,
                         res_id: self.res_ids[idx].clone(),
                     }]);
             }
-            self.state = State::Solver { locale, solver };
+            self.state.put_back_solver(solver);
         }
     }
 }
