@@ -166,7 +166,7 @@ where
                     .shared
                     .provider
                     .report_errors(vec![L10nRegistryError::MissingResource {
-                        locale: self.state.get_locale().clone(),
+                        locale: locale.clone(),
                         res_id: self.res_ids[idx].clone(),
                     }]);
             }
