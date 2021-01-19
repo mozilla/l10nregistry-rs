@@ -121,10 +121,7 @@ impl TestFileFetcher {
         crate::source::FileSource::new(name.to_string(), locales, path.to_string(), self.clone())
     }
 
-    pub fn get_registry<S>(
-        &self,
-        setup: S,
-    ) -> L10nRegistry<TestEnvironment>
+    pub fn get_registry<S>(&self, setup: S) -> L10nRegistry<TestEnvironment>
     where
         S: Into<RegistrySetup>,
     {

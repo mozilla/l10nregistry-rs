@@ -65,7 +65,7 @@ impl Future for ResourceStatus {
 /// implementation and `FileSource` takes care of the rest.
 pub struct FileSource {
     pub name: String,
-    langids: Vec<LanguageIdentifier>,
+    locales: Vec<LanguageIdentifier>,
     pre_path: String,
     shared: Rc<Inner>,
 }
@@ -100,13 +100,13 @@ impl FileSource {
     /// Create a `FileSource` using the provided [`FileFetcher`](../trait.FileFetcher.html).
     pub fn new(
         name: String,
-        langids: Vec<LanguageIdentifier>,
+        locales: Vec<LanguageIdentifier>,
         pre_path: String,
         fetcher: impl FileFetcher + 'static,
     ) -> Self {
         FileSource {
             name,
-            langids,
+            locales,
             pre_path,
             shared: Rc::new(Inner {
                 entries: RefCell::new(HashMap::default()),
@@ -123,10 +123,10 @@ impl FileSource {
 }
 
 impl FileSource {
-    fn get_path(&self, langid: &LanguageIdentifier, path: &str) -> String {
+    fn get_path(&self, locale: &LanguageIdentifier, path: &str) -> String {
         format!(
             "{}/{}",
-            self.pre_path.replace("{locale}", &langid.to_string()),
+            self.pre_path.replace("{locale}", &locale.to_string()),
             path
         )
     }
@@ -155,18 +155,18 @@ impl FileSource {
             })
     }
 
-    /// Attempt to synchronously fetch resource for the combination of `langid`
+    /// Attempt to synchronously fetch resource for the combination of `locale`
     /// and `path`. Returns `Some(ResourceResult)` if the resource is available,
     /// else `None`.
     pub fn fetch_file_sync(
         &self,
-        langid: &LanguageIdentifier,
+        locale: &LanguageIdentifier,
         path: &str,
         overload: bool,
     ) -> ResourceOption {
         use ResourceStatus::*;
 
-        let full_path = self.get_path(langid, &path);
+        let full_path = self.get_path(locale, &path);
 
         trace!("[l10nregistry] fetch_file_sync: {}", full_path);
 
@@ -201,13 +201,13 @@ impl FileSource {
         }
     }
 
-    /// Attempt to fetch resource for the combination of `langid` and `path`.
+    /// Attempt to fetch resource for the combination of `locale` and `path`.
     /// Returns [`ResourceStatus`](enum.ResourceStatus.html) which is
     /// a `Future` that can be polled.
-    pub fn fetch_file(&self, langid: &LanguageIdentifier, path: &str) -> ResourceStatus {
+    pub fn fetch_file(&self, locale: &LanguageIdentifier, path: &str) -> ResourceStatus {
         use ResourceStatus::*;
 
-        let full_path = self.get_path(langid, path);
+        let full_path = self.get_path(locale, path);
 
         trace!("[l10nregistry] fetch_file: {}", full_path);
 
@@ -218,15 +218,15 @@ impl FileSource {
     }
 
     /// Determine if the `FileSource` has a loaded resource for the combination
-    /// of `langid` and `path`. Returns `Some(true)` if the file is loaded, else
+    /// of `locale` and `path`. Returns `Some(true)` if the file is loaded, else
     /// `Some(false)`. `None` is returned if there is an outstanding async fetch
     /// pending and the status is yet to be determined.
-    pub fn has_file<L: Borrow<LanguageIdentifier>>(&self, langid: L, path: &str) -> Option<bool> {
-        let langid = langid.borrow();
-        if !self.langids.contains(langid) {
+    pub fn has_file<L: Borrow<LanguageIdentifier>>(&self, locale: L, path: &str) -> Option<bool> {
+        let locale = locale.borrow();
+        if !self.locales.contains(locale) {
             Some(false)
         } else {
-            let full_path = self.get_path(langid, path);
+            let full_path = self.get_path(locale, path);
             self.shared.has_file(&full_path)
         }
     }
@@ -236,7 +236,7 @@ impl std::fmt::Debug for FileSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("FileSource")
             .field("name", &self.name)
-            .field("langids", &self.langids)
+            .field("locales", &self.locales)
             .field("pre_path", &self.pre_path)
             .finish()
     }
