@@ -12,7 +12,6 @@ fluent-bundle = "0.14"
 fluent-fallback = "0.2"
 fluent-testing = { git = "https://github.com/projectfluent/fluent-rs", optional = true, features = ["sync", "async"] }
 futures = "0.3"
-log = "0.4"
 pin-project-lite = "0.2"
 unic-langid = "0.9"
 tokio = { version = "1.0", optional = true, features = ["rt-multi-thread", "macros"] }

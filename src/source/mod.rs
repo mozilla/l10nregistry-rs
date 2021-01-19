@@ -17,7 +17,6 @@ use std::{
 };
 
 use futures::{future::Shared, Future, FutureExt};
-use log::{trace, warn};
 use unic_langid::LanguageIdentifier;
 
 pub type RcResource = Rc<FluentResource>;
@@ -168,8 +167,6 @@ impl FileSource {
 
         let full_path = self.get_path(locale, &path);
 
-        trace!("[l10nregistry] fetch_file_sync: {}", full_path);
-
         let res = self
             .shared
             .lookup_resource(full_path.clone(), || self.fetch_sync(&full_path).into());
@@ -192,7 +189,6 @@ impl FileSource {
                 //
                 // For now, we warn and return the resource, paying the cost of
                 // duplication of the resource.
-                warn!("[l10nregistry] Attempting to synchronously load file {} while it's being loaded asynchronously.", &full_path);
                 self.fetch_sync(&full_path)
             }
             Loading(..) => {
@@ -208,8 +204,6 @@ impl FileSource {
         use ResourceStatus::*;
 
         let full_path = self.get_path(locale, path);
-
-        trace!("[l10nregistry] fetch_file: {}", full_path);
 
         self.shared.lookup_resource(full_path.clone(), || {
             let shared = self.shared.clone();
