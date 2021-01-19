@@ -10,8 +10,8 @@ fn test_generate_sources_for_file() {
     let setup = RegistrySetup::new(
         "test",
         vec![
-            FileSource::new("toolkit", vec![en_us.clone()], "toolkit/{locale}"),
-            FileSource::new("browser", vec![en_us.clone()], "browser/{locale}"),
+            FileSource::new("toolkit", vec![en_us.clone()], "toolkit/{locale}/"),
+            FileSource::new("browser", vec![en_us.clone()], "browser/{locale}/"),
         ],
         vec![en_us.clone()],
     );
@@ -54,8 +54,8 @@ fn test_generate_bundles_for_lang_sync() {
     let setup = RegistrySetup::new(
         "test",
         vec![
-            FileSource::new("toolkit", vec![en_us.clone()], "toolkit/{locale}"),
-            FileSource::new("browser", vec![en_us.clone()], "browser/{locale}"),
+            FileSource::new("toolkit", vec![en_us.clone()], "toolkit/{locale}/"),
+            FileSource::new("browser", vec![en_us.clone()], "browser/{locale}/"),
         ],
         vec![en_us.clone()],
     );
@@ -75,8 +75,8 @@ fn test_generate_bundles_sync() {
     let setup = RegistrySetup::new(
         "test",
         vec![
-            FileSource::new("toolkit", vec![en_us.clone()], "toolkit/{locale}"),
-            FileSource::new("browser", vec![en_us.clone()], "browser/{locale}"),
+            FileSource::new("toolkit", vec![en_us.clone()], "toolkit/{locale}/"),
+            FileSource::new("browser", vec![en_us.clone()], "browser/{locale}/"),
         ],
         vec![en_us.clone()],
     );
@@ -99,8 +99,8 @@ async fn test_generate_bundles_for_lang() {
     let setup = RegistrySetup::new(
         "test",
         vec![
-            FileSource::new("toolkit", vec![en_us.clone()], "toolkit/{locale}"),
-            FileSource::new("browser", vec![en_us.clone()], "browser/{locale}"),
+            FileSource::new("toolkit", vec![en_us.clone()], "toolkit/{locale}/"),
+            FileSource::new("browser", vec![en_us.clone()], "browser/{locale}/"),
         ],
         vec![en_us.clone()],
     );
@@ -122,8 +122,8 @@ async fn test_generate_bundles() {
     let setup = RegistrySetup::new(
         "test",
         vec![
-            FileSource::new("toolkit", vec![en_us.clone()], "toolkit/{locale}"),
-            FileSource::new("browser", vec![en_us.clone()], "browser/{locale}"),
+            FileSource::new("toolkit", vec![en_us.clone()], "toolkit/{locale}/"),
+            FileSource::new("browser", vec![en_us.clone()], "browser/{locale}/"),
         ],
         vec![en_us.clone()],
     );

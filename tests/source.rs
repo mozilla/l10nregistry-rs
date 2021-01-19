@@ -10,7 +10,7 @@ fn test_fetch_sync() {
     let fetcher = TestFileFetcher::new();
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
 
-    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}/");
 
     assert!(fs1
         .fetch_file_sync(&en_us, FTL_RESOURCE_PRESENT, false)
@@ -25,7 +25,7 @@ async fn test_fetch_async() {
     let fetcher = TestFileFetcher::new();
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
 
-    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}/");
 
     assert!(fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT).await.is_some());
     assert!(fs1.fetch_file(&en_us, FTL_RESOURCE_MISSING).await.is_none());
@@ -37,7 +37,7 @@ async fn test_fetch_sync_2_async() {
     let fetcher = TestFileFetcher::new();
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
 
-    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}/");
 
     assert!(fs1
         .fetch_file_sync(&en_us, FTL_RESOURCE_PRESENT, false)
@@ -53,7 +53,7 @@ async fn test_fetch_async_2_sync() {
     let fetcher = TestFileFetcher::new();
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
 
-    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}/");
 
     assert!(fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT).await.is_some());
     assert!(fs1
@@ -68,7 +68,7 @@ fn test_fetch_has_value_sync() {
     let path = FTL_RESOURCE_PRESENT;
     let path_missing = FTL_RESOURCE_MISSING;
 
-    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}/");
 
     assert_eq!(fs1.has_file(&en_us, path), None);
     assert!(fs1.fetch_file_sync(&en_us, path, false).is_some());
@@ -86,7 +86,7 @@ async fn test_fetch_has_value_async() {
     let path = FTL_RESOURCE_PRESENT;
     let path_missing = FTL_RESOURCE_MISSING;
 
-    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}/");
 
     assert_eq!(fs1.has_file(&en_us, path), None);
     assert!(fs1.fetch_file(&en_us, path).await.is_some());
@@ -104,7 +104,7 @@ async fn test_fetch_async_consequitive() {
     let fetcher = TestFileFetcher::new();
     let en_us: LanguageIdentifier = "en-US".parse().unwrap();
 
-    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+    let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}/");
 
     let results = join_all(vec![
         fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT),

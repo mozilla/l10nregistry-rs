@@ -124,7 +124,7 @@ impl FileSource {
 impl FileSource {
     fn get_path(&self, locale: &LanguageIdentifier, path: &str) -> String {
         format!(
-            "{}/{}",
+            "{}{}",
             self.pre_path.replace("{locale}", &locale.to_string()),
             path
         )
@@ -302,7 +302,7 @@ mod tests {
     async fn file_source_fetch() {
         let fetcher = TestFileFetcher::new();
         let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+        let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}/");
 
         let file = fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT).await;
         assert!(file.is_some());
@@ -312,7 +312,7 @@ mod tests {
     async fn file_source_fetch_missing() {
         let fetcher = TestFileFetcher::new();
         let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+        let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}/");
 
         let file = fs1.fetch_file(&en_us, FTL_RESOURCE_MISSING).await;
         assert!(file.is_none());
@@ -322,7 +322,7 @@ mod tests {
     async fn file_source_already_loaded() {
         let fetcher = TestFileFetcher::new();
         let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+        let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}/");
 
         let file = fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT).await;
         assert!(file.is_some());
@@ -334,7 +334,7 @@ mod tests {
     async fn file_source_concurrent() {
         let fetcher = TestFileFetcher::new();
         let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+        let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}/");
 
         let file1 = fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT);
         let file2 = fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT);
@@ -346,7 +346,7 @@ mod tests {
     fn file_source_sync_after_async_fail() {
         let fetcher = TestFileFetcher::new();
         let en_us: LanguageIdentifier = "en-US".parse().unwrap();
-        let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}");
+        let fs1 = fetcher.get_test_file_source("toolkit", vec![en_us.clone()], "toolkit/{locale}/");
 
         let _ = fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT);
         let file2 = fs1.fetch_file_sync(&en_us, FTL_RESOURCE_PRESENT, true);

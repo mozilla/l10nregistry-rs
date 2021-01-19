@@ -33,8 +33,8 @@ fn get_l10n_registry() -> &'static L10nRegistry {
         let setup = RegistrySetup::new(
             "test",
             vec![
-                FileSource::new("toolkit", get_app_locales().to_vec(), "toolkit/{locale}"),
-                FileSource::new("browser", get_app_locales().to_vec(), "browser/{locale}"),
+                FileSource::new("toolkit", get_app_locales().to_vec(), "toolkit/{locale}/"),
+                FileSource::new("browser", get_app_locales().to_vec(), "browser/{locale}/"),
             ],
             get_app_locales().to_vec(),
         );
