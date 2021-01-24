@@ -10,7 +10,6 @@ use crate::source::FileSource;
 
 use crate::environment::{ErrorReporter, LocalesProvider};
 use crate::fluent::FluentBundle;
-use chunky_vec::ChunkyVec;
 use fluent_bundle::FluentResource;
 use fluent_fallback::generator::BundleGenerator;
 use unic_langid::LanguageIdentifier;
@@ -22,13 +21,13 @@ pub type FluentResourceSet = Vec<Rc<FluentResource>>;
 
 #[derive(Default)]
 struct Shared<P> {
-    sources: RefCell<ChunkyVec<FileSource>>,
+    sources: RefCell<Vec<FileSource>>,
     provider: P,
     adapt_bundle: Option<fn(&mut FluentBundle)>,
 }
 
 pub struct L10nRegistryLocked<'a> {
-    lock: Ref<'a, ChunkyVec<FileSource>>,
+    lock: Ref<'a, Vec<FileSource>>,
     adapt_bundle: Option<fn(&mut FluentBundle)>,
 }
 
@@ -102,6 +101,28 @@ impl<P> L10nRegistry<P> {
             }
             sources.push(new_source);
         }
+        Ok(())
+    }
+
+    pub fn update_sources(&mut self, upd_sources: Vec<FileSource>) -> Result<(), ()> {
+        let shared = Rc::get_mut(&mut self.shared).unwrap();
+        let sources = shared.sources.get_mut();
+
+        for upd_source in upd_sources {
+            if let Some(idx) = sources.iter().position(|source| *source == upd_source) {
+                *sources.get_mut(idx).unwrap() = upd_source;
+            } else {
+                return Err(());
+            }
+        }
+        Ok(())
+    }
+
+    pub fn remove_sources(&mut self, del_sources: Vec<&str>) -> Result<(), ()> {
+        let shared = Rc::get_mut(&mut self.shared).unwrap();
+        let sources = shared.sources.get_mut();
+
+        sources.retain(|source| del_sources.contains(&source.name.as_str()));
         Ok(())
     }
 }
