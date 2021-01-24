@@ -7,7 +7,6 @@ edition = "2018"
 
 [dependencies]
 async-trait = "0.1"
-chunky-vec = "0.1"
 fluent-bundle = "0.14"
 fluent-fallback = "0.2"
 fluent-testing = { git = "https://github.com/projectfluent/fluent-rs", optional = true, features = ["sync", "async"] }
