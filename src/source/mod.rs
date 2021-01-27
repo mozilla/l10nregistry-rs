@@ -64,8 +64,8 @@ impl Future for ResourceStatus {
 /// implementation and `FileSource` takes care of the rest.
 pub struct FileSource {
     pub name: String,
-    locales: Vec<LanguageIdentifier>,
-    pre_path: String,
+    pub locales: Vec<LanguageIdentifier>,
+    pub pre_path: String,
     shared: Rc<Inner>,
 }
 
