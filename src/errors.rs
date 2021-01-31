@@ -26,3 +26,26 @@ impl std::fmt::Display for L10nRegistryError {
 }
 
 impl Error for L10nRegistryError {}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum L10nRegistrySetupError {
+    RegistryLocked,
+    DuplicatedSource { name: String },
+    MissingSource { name: String },
+}
+
+impl std::fmt::Display for L10nRegistrySetupError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::RegistryLocked => write!(f, "Can't modify a registry when locked."),
+            Self::DuplicatedSource { name } => {
+                write!(f, "Source with a name {} is already registered.", &name)
+            }
+            Self::MissingSource { name } => {
+                write!(f, "Cannot find a source with a name {}.", &name)
+            }
+        }
+    }
+}
+
+impl Error for L10nRegistrySetupError {}

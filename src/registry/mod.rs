@@ -6,6 +6,7 @@ use std::{
     rc::Rc,
 };
 
+use crate::errors::L10nRegistrySetupError;
 use crate::source::FileSource;
 
 use crate::environment::{ErrorReporter, LocalesProvider};
@@ -79,9 +80,13 @@ impl<P> L10nRegistry<P> {
         }
     }
 
-    pub fn set_adapt_bundle(&mut self, adapt_bundle: fn(&mut FluentBundle)) {
-        let shared = Rc::get_mut(&mut self.shared).unwrap();
+    pub fn set_adapt_bundle(
+        &mut self,
+        adapt_bundle: fn(&mut FluentBundle),
+    ) -> Result<(), L10nRegistrySetupError> {
+        let shared = Rc::get_mut(&mut self.shared).ok_or(L10nRegistrySetupError::RegistryLocked)?;
         shared.adapt_bundle = Some(adapt_bundle);
+        Ok(())
     }
 
     pub fn lock(&self) -> L10nRegistryLocked<'_> {
@@ -91,35 +96,45 @@ impl<P> L10nRegistry<P> {
         }
     }
 
-    pub fn register_sources(&mut self, new_sources: Vec<FileSource>) -> Result<(), ()> {
-        let shared = Rc::get_mut(&mut self.shared).unwrap();
+    pub fn register_sources(
+        &mut self,
+        new_sources: Vec<FileSource>,
+    ) -> Result<(), L10nRegistrySetupError> {
+        let shared = Rc::get_mut(&mut self.shared).ok_or(L10nRegistrySetupError::RegistryLocked)?;
         let sources = shared.sources.get_mut();
 
         for new_source in new_sources {
             if sources.iter().any(|source| source == &new_source) {
-                return Err(());
+                return Err(L10nRegistrySetupError::DuplicatedSource {
+                    name: new_source.name,
+                });
             }
             sources.push(new_source);
         }
         Ok(())
     }
 
-    pub fn update_sources(&mut self, upd_sources: Vec<FileSource>) -> Result<(), ()> {
-        let shared = Rc::get_mut(&mut self.shared).unwrap();
+    pub fn update_sources(
+        &mut self,
+        upd_sources: Vec<FileSource>,
+    ) -> Result<(), L10nRegistrySetupError> {
+        let shared = Rc::get_mut(&mut self.shared).ok_or(L10nRegistrySetupError::RegistryLocked)?;
         let sources = shared.sources.get_mut();
 
         for upd_source in upd_sources {
             if let Some(idx) = sources.iter().position(|source| *source == upd_source) {
                 *sources.get_mut(idx).unwrap() = upd_source;
             } else {
-                return Err(());
+                return Err(L10nRegistrySetupError::MissingSource {
+                    name: upd_source.name,
+                });
             }
         }
         Ok(())
     }
 
-    pub fn remove_sources(&mut self, del_sources: Vec<&str>) -> Result<(), ()> {
-        let shared = Rc::get_mut(&mut self.shared).ok_or_else(|| ())?;
+    pub fn remove_sources(&mut self, del_sources: Vec<&str>) -> Result<(), L10nRegistrySetupError> {
+        let shared = Rc::get_mut(&mut self.shared).ok_or(L10nRegistrySetupError::RegistryLocked)?;
         let sources = shared.sources.get_mut();
 
         sources.retain(|source| !del_sources.contains(&source.name.as_str()));
