@@ -137,3 +137,75 @@ async fn test_generate_bundles() {
     assert!(i.next().await.is_some());
     assert!(i.next().await.is_none());
 }
+
+#[test]
+fn test_manage_sources() {
+    let en_us: LanguageIdentifier = "en-US".parse().unwrap();
+    let setup = RegistrySetup::new(
+        "test",
+        vec![
+            FileSource::new("toolkit", vec![en_us.clone()], "toolkit/{locale}/"),
+            FileSource::new("browser", vec![en_us.clone()], "browser/{locale}/"),
+        ],
+        vec![en_us.clone()],
+    );
+    let fetcher = TestFileFetcher::new();
+    let (_, mut reg) = fetcher.get_registry_and_environment(setup);
+
+    let lang_ids = vec![en_us];
+
+    let paths = vec![FTL_RESOURCE_TOOLKIT.into(), FTL_RESOURCE_BROWSER.into()];
+    {
+        let mut i = reg.generate_bundles_sync(lang_ids.clone(), paths);
+
+        assert!(i.next().is_some());
+        assert!(i.next().is_none());
+    }
+
+    reg.remove_sources(vec!["toolkit"])
+        .expect("Failed to remove a source.");
+
+    let paths = vec![FTL_RESOURCE_TOOLKIT.into(), FTL_RESOURCE_BROWSER.into()];
+    {
+        let mut i = reg.generate_bundles_sync(lang_ids.clone(), paths);
+
+        assert!(i.next().is_none());
+    }
+
+    let paths = vec![FTL_RESOURCE_BROWSER.into()];
+    {
+        let mut i = reg.generate_bundles_sync(lang_ids.clone(), paths);
+
+        assert!(i.next().is_some());
+        assert!(i.next().is_none());
+    }
+
+    reg.register_sources(vec![fetcher.get_test_file_source(
+        "toolkit",
+        lang_ids.clone(),
+        "browser/{locale}/",
+    )])
+    .expect("Failed to register a source.");
+
+    let paths = vec![FTL_RESOURCE_TOOLKIT.into(), FTL_RESOURCE_BROWSER.into()];
+    {
+        let mut i = reg.generate_bundles_sync(lang_ids.clone(), paths);
+
+        assert!(i.next().is_none());
+    }
+
+    reg.update_sources(vec![fetcher.get_test_file_source(
+        "toolkit",
+        lang_ids.clone(),
+        "toolkit/{locale}/",
+    )])
+    .expect("Failed to update a source.");
+
+    let paths = vec![FTL_RESOURCE_TOOLKIT.into(), FTL_RESOURCE_BROWSER.into()];
+    {
+        let mut i = reg.generate_bundles_sync(lang_ids.clone(), paths);
+
+        assert!(i.next().is_some());
+        assert!(i.next().is_none());
+    }
+}

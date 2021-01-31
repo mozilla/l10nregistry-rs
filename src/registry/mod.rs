@@ -119,10 +119,10 @@ impl<P> L10nRegistry<P> {
     }
 
     pub fn remove_sources(&mut self, del_sources: Vec<&str>) -> Result<(), ()> {
-        let shared = Rc::get_mut(&mut self.shared).unwrap();
+        let shared = Rc::get_mut(&mut self.shared).ok_or_else(|| ())?;
         let sources = shared.sources.get_mut();
 
-        sources.retain(|source| del_sources.contains(&source.name.as_str()));
+        sources.retain(|source| !del_sources.contains(&source.name.as_str()));
         Ok(())
     }
 }
