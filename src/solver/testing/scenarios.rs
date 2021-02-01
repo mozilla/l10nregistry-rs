@@ -147,5 +147,17 @@ pub fn get_scenarios() -> Vec<Scenario> {
                 vec![3, 3, 3],
             ],
         ),
+        Scenario::new(
+            "catastrophic",
+            4,
+            21,
+            vec![
+                vec![true; 21],
+                vec![true; 21],
+                vec![true; 21],
+                vec![true; 21],
+            ],
+            vec![],
+        ),
     ]
 }
