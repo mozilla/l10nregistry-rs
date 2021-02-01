@@ -133,11 +133,15 @@ impl<P> L10nRegistry<P> {
         Ok(())
     }
 
-    pub fn remove_sources(&mut self, del_sources: Vec<&str>) -> Result<(), L10nRegistrySetupError> {
+    pub fn remove_sources<S>(&mut self, del_sources: Vec<S>) -> Result<(), L10nRegistrySetupError>
+    where
+        S: ToString,
+    {
         let shared = Rc::get_mut(&mut self.shared).ok_or(L10nRegistrySetupError::RegistryLocked)?;
         let sources = shared.sources.get_mut();
+        let del_sources: Vec<String> = del_sources.into_iter().map(|s| s.to_string()).collect();
 
-        sources.retain(|source| !del_sources.contains(&source.name.as_str()));
+        sources.retain(|source| !del_sources.contains(&source.name));
         Ok(())
     }
 }
