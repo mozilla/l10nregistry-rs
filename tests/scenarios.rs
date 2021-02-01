@@ -19,7 +19,8 @@ fn scenarios_test() {
             bundle
                 .add_function("PLATFORM", |_positional, _named| "linux".into())
                 .expect("Failed to add a function to the bundle.");
-        });
+        })
+        .expect("Failed to set adapt bundle.");
 
         let loc = Localization::with_generator(scenario.res_ids.clone(), true, reg);
         let mut errors = vec![];

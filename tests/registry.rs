@@ -150,35 +150,29 @@ fn test_manage_sources() {
         vec![en_us.clone()],
     );
     let fetcher = TestFileFetcher::new();
-    let (_, mut reg) = fetcher.get_registry_and_environment(setup);
+    let (_, reg) = fetcher.get_registry_and_environment(setup);
 
     let lang_ids = vec![en_us];
 
     let paths = vec![FTL_RESOURCE_TOOLKIT.into(), FTL_RESOURCE_BROWSER.into()];
-    {
-        let mut i = reg.generate_bundles_sync(lang_ids.clone(), paths);
 
-        assert!(i.next().is_some());
-        assert!(i.next().is_none());
-    }
+    let mut i = reg.generate_bundles_sync(lang_ids.clone(), paths);
 
-    reg.remove_sources(vec!["toolkit"])
+    assert!(i.next().is_some());
+    assert!(i.next().is_none());
+
+    reg.clone()
+        .remove_sources(vec!["toolkit"])
         .expect("Failed to remove a source.");
 
     let paths = vec![FTL_RESOURCE_TOOLKIT.into(), FTL_RESOURCE_BROWSER.into()];
-    {
-        let mut i = reg.generate_bundles_sync(lang_ids.clone(), paths);
-
-        assert!(i.next().is_none());
-    }
+    let mut i = reg.generate_bundles_sync(lang_ids.clone(), paths);
+    assert!(i.next().is_none());
 
     let paths = vec![FTL_RESOURCE_BROWSER.into()];
-    {
-        let mut i = reg.generate_bundles_sync(lang_ids.clone(), paths);
-
-        assert!(i.next().is_some());
-        assert!(i.next().is_none());
-    }
+    let mut i = reg.generate_bundles_sync(lang_ids.clone(), paths);
+    assert!(i.next().is_some());
+    assert!(i.next().is_none());
 
     reg.register_sources(vec![fetcher.get_test_file_source(
         "toolkit",
@@ -188,11 +182,8 @@ fn test_manage_sources() {
     .expect("Failed to register a source.");
 
     let paths = vec![FTL_RESOURCE_TOOLKIT.into(), FTL_RESOURCE_BROWSER.into()];
-    {
-        let mut i = reg.generate_bundles_sync(lang_ids.clone(), paths);
-
-        assert!(i.next().is_none());
-    }
+    let mut i = reg.generate_bundles_sync(lang_ids.clone(), paths);
+    assert!(i.next().is_none());
 
     reg.update_sources(vec![fetcher.get_test_file_source(
         "toolkit",
@@ -202,10 +193,7 @@ fn test_manage_sources() {
     .expect("Failed to update a source.");
 
     let paths = vec![FTL_RESOURCE_TOOLKIT.into(), FTL_RESOURCE_BROWSER.into()];
-    {
-        let mut i = reg.generate_bundles_sync(lang_ids.clone(), paths);
-
-        assert!(i.next().is_some());
-        assert!(i.next().is_none());
-    }
+    let mut i = reg.generate_bundles_sync(lang_ids.clone(), paths);
+    assert!(i.next().is_some());
+    assert!(i.next().is_none());
 }

@@ -97,11 +97,14 @@ impl<P> L10nRegistry<P> {
     }
 
     pub fn register_sources(
-        &mut self,
+        &self,
         new_sources: Vec<FileSource>,
     ) -> Result<(), L10nRegistrySetupError> {
-        let shared = Rc::get_mut(&mut self.shared).ok_or(L10nRegistrySetupError::RegistryLocked)?;
-        let sources = shared.sources.get_mut();
+        let mut sources = self
+            .shared
+            .sources
+            .try_borrow_mut()
+            .map_err(|_| L10nRegistrySetupError::RegistryLocked)?;
 
         for new_source in new_sources {
             if sources.iter().any(|source| source == &new_source) {
@@ -115,11 +118,14 @@ impl<P> L10nRegistry<P> {
     }
 
     pub fn update_sources(
-        &mut self,
+        &self,
         upd_sources: Vec<FileSource>,
     ) -> Result<(), L10nRegistrySetupError> {
-        let shared = Rc::get_mut(&mut self.shared).ok_or(L10nRegistrySetupError::RegistryLocked)?;
-        let sources = shared.sources.get_mut();
+        let mut sources = self
+            .shared
+            .sources
+            .try_borrow_mut()
+            .map_err(|_| L10nRegistrySetupError::RegistryLocked)?;
 
         for upd_source in upd_sources {
             if let Some(idx) = sources.iter().position(|source| *source == upd_source) {
@@ -133,12 +139,15 @@ impl<P> L10nRegistry<P> {
         Ok(())
     }
 
-    pub fn remove_sources<S>(&mut self, del_sources: Vec<S>) -> Result<(), L10nRegistrySetupError>
+    pub fn remove_sources<S>(&self, del_sources: Vec<S>) -> Result<(), L10nRegistrySetupError>
     where
         S: ToString,
     {
-        let shared = Rc::get_mut(&mut self.shared).ok_or(L10nRegistrySetupError::RegistryLocked)?;
-        let sources = shared.sources.get_mut();
+        let mut sources = self
+            .shared
+            .sources
+            .try_borrow_mut()
+            .map_err(|_| L10nRegistrySetupError::RegistryLocked)?;
         let del_sources: Vec<String> = del_sources.into_iter().map(|s| s.to_string()).collect();
 
         sources.retain(|source| !del_sources.contains(&source.name));

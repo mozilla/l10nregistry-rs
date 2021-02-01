@@ -138,7 +138,7 @@ impl TestFileFetcher {
         let setup: RegistrySetup = setup.into();
         let provider = TestEnvironment::new(setup.locales);
 
-        let mut reg = L10nRegistry::with_provider(provider.clone());
+        let reg = L10nRegistry::with_provider(provider.clone());
         let sources = setup
             .file_sources
             .into_iter()
