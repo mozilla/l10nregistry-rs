@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use fluent_fallback::{types::L10nKey, Localization};
+use fluent_fallback::{env::LocalesProvider, types::L10nKey, Localization};
 use l10nregistry::testing::{FileSource, RegistrySetup, TestEnvironment, TestFileFetcher};
 use serial_test::serial;
 use unic_langid::{langid, LanguageIdentifier};
@@ -46,25 +46,33 @@ fn get_app_locales() -> &'static [LanguageIdentifier] {
     LOCALES
 }
 
+struct LocalesService;
+
+impl LocalesProvider for LocalesService {
+    fn locales(&self) -> std::vec::IntoIter<LanguageIdentifier> {
+        get_app_locales().to_vec().into_iter()
+    }
+}
+
 fn sync_localization(
     reg: &'static L10nRegistry,
     res_ids: Vec<String>,
-) -> Localization<L10nRegistry> {
-    Localization::with_generator(res_ids, true, reg.clone())
+) -> Localization<L10nRegistry, LocalesService> {
+    Localization::with_env(res_ids, true, LocalesService, reg.clone())
 }
 
 fn async_localization(
     reg: &'static L10nRegistry,
     res_ids: Vec<String>,
-) -> Localization<L10nRegistry> {
-    Localization::with_generator(res_ids, false, reg.clone())
+) -> Localization<L10nRegistry, LocalesService> {
+    Localization::with_env(res_ids, false, LocalesService, reg.clone())
 }
 
-fn setup_sync_test() -> Localization<L10nRegistry> {
+fn setup_sync_test() -> Localization<L10nRegistry, LocalesService> {
     sync_localization(get_l10n_registry(), vec![FTL_RESOURCE.into()])
 }
 
-fn setup_async_test() -> Localization<L10nRegistry> {
+fn setup_async_test() -> Localization<L10nRegistry, LocalesService> {
     async_localization(get_l10n_registry(), vec![FTL_RESOURCE.into()])
 }
 

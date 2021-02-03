@@ -24,7 +24,8 @@ fn preferences_bench(c: &mut Criterion) {
         group.bench_function(format!("{}/sync/first_bundle", scenario.name), |b| {
             b.iter(|| {
                 let reg = fetcher.get_registry(&scenario);
-                let mut bundles = reg.generate_bundles_sync(locales.clone(), res_ids.clone());
+                let mut bundles =
+                    reg.generate_bundles_sync(locales.clone().into_iter(), res_ids.clone());
                 assert!(bundles.next().is_some());
             })
         });
@@ -40,7 +41,8 @@ fn preferences_bench(c: &mut Criterion) {
                     rt.block_on(async {
                         let reg = fetcher.get_registry(&scenario);
 
-                        let mut bundles = reg.generate_bundles(locales.clone(), res_ids.clone());
+                        let mut bundles =
+                            reg.generate_bundles(locales.clone().into_iter(), res_ids.clone());
                         assert!(bundles.next().await.is_some());
                     });
                 })

@@ -1,7 +1,7 @@
 mod fetcher;
 pub use fetcher::FileFetcher;
 
-use crate::environment::ErrorReporter;
+use crate::env::ErrorReporter;
 use crate::errors::L10nRegistryError;
 use crate::fluent::FluentResource;
 

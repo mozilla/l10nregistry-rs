@@ -6,7 +6,7 @@ use std::{
 use super::{L10nRegistry, L10nRegistryLocked};
 use crate::solver::{AsyncTester, ParallelProblemSolver};
 use crate::{
-    environment::ErrorReporter,
+    env::ErrorReporter,
     errors::L10nRegistryError,
     fluent::{FluentBundle, FluentError},
     source::{ResourceOption, ResourceStatus},
@@ -33,15 +33,15 @@ where
     ) -> GenerateBundles<P> {
         let lang_ids = vec![langid];
 
-        GenerateBundles::new(self.clone(), lang_ids, resource_ids)
+        GenerateBundles::new(self.clone(), lang_ids.into_iter(), resource_ids)
     }
 
     pub fn generate_bundles(
         &self,
-        lang_ids: Vec<LanguageIdentifier>,
+        locales: std::vec::IntoIter<LanguageIdentifier>,
         resource_ids: Vec<String>,
     ) -> GenerateBundles<P> {
-        GenerateBundles::new(self.clone(), lang_ids, resource_ids)
+        GenerateBundles::new(self.clone(), locales, resource_ids)
     }
 }
 
@@ -86,16 +86,20 @@ impl<P> State<P> {
 
 pub struct GenerateBundles<P> {
     reg: L10nRegistry<P>,
-    locales: <Vec<LanguageIdentifier> as IntoIterator>::IntoIter,
+    locales: std::vec::IntoIter<LanguageIdentifier>,
     res_ids: Vec<String>,
     state: State<P>,
 }
 
 impl<P> GenerateBundles<P> {
-    fn new(reg: L10nRegistry<P>, locales: Vec<LanguageIdentifier>, res_ids: Vec<String>) -> Self {
+    fn new(
+        reg: L10nRegistry<P>,
+        locales: std::vec::IntoIter<LanguageIdentifier>,
+        res_ids: Vec<String>,
+    ) -> Self {
         Self {
             reg,
-            locales: locales.into_iter(),
+            locales,
             res_ids,
             state: State::Empty,
         }

@@ -1,4 +1,4 @@
-pub mod environment;
+pub mod env;
 pub mod errors;
 pub mod fluent;
 pub mod registry;

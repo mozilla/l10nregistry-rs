@@ -1,8 +1,9 @@
-use crate::environment::{ErrorReporter, LocalesProvider};
+use crate::env::ErrorReporter;
 use crate::errors::L10nRegistryError;
 use crate::registry::L10nRegistry;
 use crate::source::FileFetcher;
 use async_trait::async_trait;
+use fluent_fallback::env::LocalesProvider;
 use fluent_testing::MockFileSystem;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -207,8 +208,8 @@ impl TestEnvironment {
 }
 
 impl LocalesProvider for TestEnvironment {
-    fn locales(&self) -> Vec<LanguageIdentifier> {
-        self.inner.borrow().locales.clone()
+    fn locales(&self) -> std::vec::IntoIter<LanguageIdentifier> {
+        self.inner.borrow().locales.clone().into_iter()
     }
 }
 

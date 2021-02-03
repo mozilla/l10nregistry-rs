@@ -33,10 +33,10 @@ fn preferences_bench(c: &mut Criterion) {
 
         group.bench_function(format!("{}/format_value_sync", scenario.name), |b| {
             b.iter(|| {
-                let reg = fetcher.get_registry(&scenario);
+                let (env, reg) = fetcher.get_registry_and_environment(&scenario);
                 let mut errors = vec![];
 
-                let loc = Localization::with_generator(res_ids.clone(), true, reg.clone());
+                let loc = Localization::with_env(res_ids.clone(), true, env.clone(), reg.clone());
                 for key in l10n_keys.iter() {
                     loc.format_value_sync(&key.0, key.1.as_ref(), &mut errors);
                 }
@@ -52,9 +52,9 @@ fn preferences_bench(c: &mut Criterion) {
             .collect();
         group.bench_function(format!("{}/format_messages_sync", scenario.name), |b| {
             b.iter(|| {
-                let reg = fetcher.get_registry(&scenario);
+                let (env, reg) = fetcher.get_registry_and_environment(&scenario);
                 let mut errors = vec![];
-                let loc = Localization::with_generator(res_ids.clone(), true, reg.clone());
+                let loc = Localization::with_env(res_ids.clone(), true, env.clone(), reg.clone());
                 loc.format_messages_sync(&keys, &mut errors);
             })
         });

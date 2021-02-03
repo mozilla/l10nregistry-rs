@@ -9,7 +9,7 @@ use std::{
 use crate::errors::L10nRegistrySetupError;
 use crate::source::FileSource;
 
-use crate::environment::{ErrorReporter, LocalesProvider};
+use crate::env::ErrorReporter;
 use crate::fluent::FluentBundle;
 use fluent_bundle::FluentResource;
 use fluent_fallback::generator::BundleGenerator;
@@ -157,17 +157,25 @@ impl<P> L10nRegistry<P> {
 
 impl<P> BundleGenerator for L10nRegistry<P>
 where
-    P: LocalesProvider + ErrorReporter + Clone,
+    P: ErrorReporter + Clone,
 {
     type Resource = Rc<FluentResource>;
     type Iter = GenerateBundlesSync<P>;
     type Stream = GenerateBundles<P>;
 
-    fn bundles_stream(&self, resource_ids: Vec<String>) -> Self::Stream {
-        self.generate_bundles(self.shared.provider.locales().to_vec(), resource_ids)
+    fn bundles_stream(
+        &self,
+        locales: std::vec::IntoIter<LanguageIdentifier>,
+        resource_ids: Vec<String>,
+    ) -> Self::Stream {
+        self.generate_bundles(locales, resource_ids)
     }
 
-    fn bundles_iter(&self, resource_ids: Vec<String>) -> Self::Iter {
-        self.generate_bundles_sync(self.shared.provider.locales().to_vec(), resource_ids)
+    fn bundles_iter(
+        &self,
+        locales: std::vec::IntoIter<LanguageIdentifier>,
+        resource_ids: Vec<String>,
+    ) -> Self::Iter {
+        self.generate_bundles_sync(locales, resource_ids)
     }
 }

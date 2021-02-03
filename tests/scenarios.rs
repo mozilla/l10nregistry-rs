@@ -22,7 +22,7 @@ fn scenarios_test() {
         })
         .expect("Failed to set adapt bundle.");
 
-        let loc = Localization::with_generator(scenario.res_ids.clone(), true, reg);
+        let loc = Localization::with_env(scenario.res_ids.clone(), true, env.clone(), reg);
         let mut errors = vec![];
 
         for query in scenario.queries.iter() {
