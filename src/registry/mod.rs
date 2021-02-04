@@ -163,6 +163,15 @@ impl<P> L10nRegistry<P> {
         sources.clear();
         Ok(())
     }
+
+    pub fn get_source_names<S>(&self) -> Result<Vec<String>, L10nRegistrySetupError> {
+        let sources = self
+            .shared
+            .sources
+            .try_borrow_mut()
+            .map_err(|_| L10nRegistrySetupError::RegistryLocked)?;
+        Ok(sources.iter().map(|s| s.name.clone()).collect())
+    }
 }
 
 impl<P> BundleGenerator for L10nRegistry<P>
