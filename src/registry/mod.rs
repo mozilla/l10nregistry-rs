@@ -153,6 +153,16 @@ impl<P> L10nRegistry<P> {
         sources.retain(|source| !del_sources.contains(&source.name));
         Ok(())
     }
+
+    pub fn clear_sources<S>(&self) -> Result<(), L10nRegistrySetupError> {
+        let mut sources = self
+            .shared
+            .sources
+            .try_borrow_mut()
+            .map_err(|_| L10nRegistrySetupError::RegistryLocked)?;
+        sources.clear();
+        Ok(())
+    }
 }
 
 impl<P> BundleGenerator for L10nRegistry<P>
