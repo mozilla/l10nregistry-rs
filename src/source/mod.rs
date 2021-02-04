@@ -62,12 +62,12 @@ impl Future for ResourceStatus {
 /// `FileSource` provides a generic fetching and caching of fluent resources.
 /// The user of `FileSource` provides a [`FileFetcher`](trait.FileFetcher.html)
 /// implementation and `FileSource` takes care of the rest.
-#[derive(Clone)]
 pub struct FileSource {
     pub name: String,
-    pub locales: Vec<LanguageIdentifier>,
     pub pre_path: String,
+    locales: Vec<LanguageIdentifier>,
     shared: Rc<Inner>,
+    index: Option<Vec<String>>,
 }
 
 struct Inner {
@@ -106,8 +106,29 @@ impl FileSource {
     ) -> Self {
         FileSource {
             name,
-            locales,
             pre_path,
+            locales,
+            index: None,
+            shared: Rc::new(Inner {
+                entries: RefCell::new(HashMap::default()),
+                fetcher: Box::new(fetcher),
+                error_reporter: None,
+            }),
+        }
+    }
+
+    pub fn new_with_index(
+        name: String,
+        locales: Vec<LanguageIdentifier>,
+        pre_path: String,
+        fetcher: impl FileFetcher + 'static,
+        index: Vec<String>,
+    ) -> Self {
+        FileSource {
+            name,
+            pre_path,
+            locales,
+            index: Some(index),
             shared: Rc::new(Inner {
                 entries: RefCell::new(HashMap::default()),
                 fetcher: Box::new(fetcher),
@@ -166,6 +187,10 @@ impl FileSource {
     ) -> ResourceOption {
         use ResourceStatus::*;
 
+        if self.has_file(locale, path) == Some(false) {
+            return None;
+        }
+
         let full_path = self.get_path(locale, &path);
 
         let res = self
@@ -204,6 +229,10 @@ impl FileSource {
     pub fn fetch_file(&self, locale: &LanguageIdentifier, path: &str) -> ResourceStatus {
         use ResourceStatus::*;
 
+        if self.has_file(locale, path) == Some(false) {
+            return ResourceStatus::Missing;
+        }
+
         let full_path = self.get_path(locale, path);
 
         self.shared.lookup_resource(full_path.clone(), || {
@@ -222,8 +251,15 @@ impl FileSource {
             Some(false)
         } else {
             let full_path = self.get_path(locale, path);
+            if let Some(index) = &self.index {
+                return Some(index.iter().any(|p| p == path));
+            }
             self.shared.has_file(&full_path)
         }
+    }
+
+    pub fn locales(&self) -> &[LanguageIdentifier] {
+        &self.locales
     }
 }
 

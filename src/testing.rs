@@ -122,6 +122,22 @@ impl TestFileFetcher {
         crate::source::FileSource::new(name.to_string(), locales, path.to_string(), self.clone())
     }
 
+    pub fn get_test_file_source_with_index(
+        &self,
+        name: &str,
+        locales: Vec<LanguageIdentifier>,
+        path: &str,
+        index: Vec<&str>,
+    ) -> crate::source::FileSource {
+        crate::source::FileSource::new_with_index(
+            name.to_string(),
+            locales,
+            path.to_string(),
+            self.clone(),
+            index.into_iter().map(|s| s.to_string()).collect(),
+        )
+    }
+
     pub fn get_registry<S>(&self, setup: S) -> L10nRegistry<TestEnvironment>
     where
         S: Into<RegistrySetup>,

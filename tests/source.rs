@@ -116,3 +116,26 @@ async fn test_fetch_async_consequitive() {
 
     assert!(fs1.fetch_file(&en_us, FTL_RESOURCE_PRESENT).await.is_some());
 }
+
+#[test]
+fn test_indexed() {
+    let fetcher = TestFileFetcher::new();
+    let en_us: LanguageIdentifier = "en-US".parse().unwrap();
+    let path = FTL_RESOURCE_PRESENT;
+    let path_missing = FTL_RESOURCE_MISSING;
+
+    let fs1 = fetcher.get_test_file_source_with_index(
+        "toolkit",
+        vec![en_us.clone()],
+        "toolkit/{locale}/",
+        vec!["toolkit/global/textActions.ftl"],
+    );
+
+    assert_eq!(fs1.has_file(&en_us, path), Some(true));
+    assert!(fs1.fetch_file_sync(&en_us, path, false).is_some());
+    assert_eq!(fs1.has_file(&en_us, path), Some(true));
+
+    assert_eq!(fs1.has_file(&en_us, path_missing), Some(false));
+    assert!(fs1.fetch_file_sync(&en_us, path_missing, false).is_none());
+    assert_eq!(fs1.has_file(&en_us, path_missing), Some(false));
+}

@@ -3,8 +3,8 @@ mod synchronous;
 
 use std::{
     cell::{Ref, RefCell},
-    rc::Rc,
     collections::HashSet,
+    rc::Rc,
 };
 
 use crate::errors::L10nRegistrySetupError;
@@ -191,7 +191,7 @@ impl<P> L10nRegistry<P> {
             .map_err(|_| L10nRegistrySetupError::RegistryLocked)?;
         let mut result = HashSet::new();
         for source in sources.iter() {
-            for locale in &source.locales {
+            for locale in source.locales() {
                 result.insert(locale);
             }
         }
