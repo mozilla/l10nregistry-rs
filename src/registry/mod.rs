@@ -4,6 +4,7 @@ mod synchronous;
 use std::{
     cell::{Ref, RefCell},
     rc::Rc,
+    collections::HashSet,
 };
 
 use crate::errors::L10nRegistrySetupError;
@@ -154,7 +155,7 @@ impl<P> L10nRegistry<P> {
         Ok(())
     }
 
-    pub fn clear_sources<S>(&self) -> Result<(), L10nRegistrySetupError> {
+    pub fn clear_sources(&self) -> Result<(), L10nRegistrySetupError> {
         let mut sources = self
             .shared
             .sources
@@ -164,13 +165,37 @@ impl<P> L10nRegistry<P> {
         Ok(())
     }
 
-    pub fn get_source_names<S>(&self) -> Result<Vec<String>, L10nRegistrySetupError> {
+    pub fn get_source_names(&self) -> Result<Vec<String>, L10nRegistrySetupError> {
         let sources = self
             .shared
             .sources
             .try_borrow_mut()
             .map_err(|_| L10nRegistrySetupError::RegistryLocked)?;
         Ok(sources.iter().map(|s| s.name.clone()).collect())
+    }
+
+    pub fn has_source(&self, name: &str) -> Result<bool, L10nRegistrySetupError> {
+        let sources = self
+            .shared
+            .sources
+            .try_borrow_mut()
+            .map_err(|_| L10nRegistrySetupError::RegistryLocked)?;
+        Ok(sources.iter().any(|source| source.name == name))
+    }
+
+    pub fn get_available_locales(&self) -> Result<Vec<LanguageIdentifier>, L10nRegistrySetupError> {
+        let sources = self
+            .shared
+            .sources
+            .try_borrow_mut()
+            .map_err(|_| L10nRegistrySetupError::RegistryLocked)?;
+        let mut result = HashSet::new();
+        for source in sources.iter() {
+            for locale in &source.locales {
+                result.insert(locale);
+            }
+        }
+        Ok(result.into_iter().map(|l| l.to_owned()).collect())
     }
 }
 
