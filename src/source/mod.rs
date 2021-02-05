@@ -62,6 +62,7 @@ impl Future for ResourceStatus {
 /// `FileSource` provides a generic fetching and caching of fluent resources.
 /// The user of `FileSource` provides a [`FileFetcher`](trait.FileFetcher.html)
 /// implementation and `FileSource` takes care of the rest.
+#[derive(Clone)]
 pub struct FileSource {
     pub name: String,
     pub pre_path: String,
