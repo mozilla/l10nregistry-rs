@@ -23,7 +23,7 @@ fn preferences_bench(c: &mut Criterion) {
                     q.input.args.as_ref().map(|args| {
                         let mut result = FluentArgs::new();
                         for arg in args.as_slice() {
-                            result.add(arg.id.clone(), arg.value.clone().into());
+                            result.set(arg.id.clone(), arg.value.clone());
                         }
                         result
                     }),

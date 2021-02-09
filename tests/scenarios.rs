@@ -29,7 +29,7 @@ fn scenarios_test() {
             let args = query.input.args.as_ref().map(|args| {
                 let mut result = FluentArgs::new();
                 for arg in args.as_slice() {
-                    result.add(arg.id.clone(), arg.value.clone().into());
+                    result.set(arg.id.clone(), arg.value.clone());
                 }
                 result
             });
