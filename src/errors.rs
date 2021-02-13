@@ -6,6 +6,7 @@ use unic_langid::LanguageIdentifier;
 pub enum L10nRegistryError {
     FluentError {
         path: String,
+        loc: Option<(usize, usize)>,
         error: FluentError,
     },
     MissingResource {
@@ -20,7 +21,17 @@ impl std::fmt::Display for L10nRegistryError {
             Self::MissingResource { locale, res_id } => {
                 write!(f, "Missing resource in locale {}: {}", locale, res_id)
             }
-            Self::FluentError { path, error } => write!(f, "Fluent Error in {}: {}", path, error),
+            Self::FluentError { path, loc, error } => {
+                if let Some(loc) = loc {
+                    write!(
+                        f,
+                        "Fluent Error in {}[line: {}, col: {}]: {}",
+                        path, loc.0, loc.1, error
+                    )
+                } else {
+                    write!(f, "Fluent Error in {}: {}", path, error)
+                }
+            }
         }
     }
 }

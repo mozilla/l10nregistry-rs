@@ -32,6 +32,7 @@ impl<'a> L10nRegistryLocked<'a> {
                 if let Err(err) = bundle.add_resource(res) {
                     errors.extend(err.into_iter().map(|error| L10nRegistryError::FluentError {
                         path: path.clone(),
+                        loc: None,
                         error,
                     }));
                 }

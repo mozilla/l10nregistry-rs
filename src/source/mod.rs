@@ -144,6 +144,22 @@ impl FileSource {
     }
 }
 
+fn calculate_pos_in_source(source: &str, idx: usize) -> (usize, usize) {
+    let mut ptr = 0;
+    let mut result = (1, 1);
+    for line in source.lines() {
+        let bytes = line.as_bytes().len();
+        if ptr + bytes < idx {
+            ptr += bytes + 1;
+            result.0 += 1;
+        } else {
+            result.1 = idx - ptr + 1;
+            break;
+        }
+    }
+    result
+}
+
 impl FileSource {
     fn get_path(&self, locale: &LanguageIdentifier, path: &str) -> String {
         format!(
@@ -167,6 +183,7 @@ impl FileSource {
                                 .into_iter()
                                 .map(|e| L10nRegistryError::FluentError {
                                     path: full_path.to_string(),
+                                    loc: Some(calculate_pos_in_source(res.source(), e.pos.start)),
                                     error: e.into(),
                                 })
                                 .collect(),
@@ -314,6 +331,7 @@ async fn read_resource(path: String, shared: Rc<Inner>) -> ResourceOption {
                                 .into_iter()
                                 .map(|e| L10nRegistryError::FluentError {
                                     path: path.clone(),
+                                    loc: Some(calculate_pos_in_source(res.source(), e.pos.start)),
                                     error: e.into(),
                                 })
                                 .collect(),
@@ -328,8 +346,34 @@ async fn read_resource(path: String, shared: Rc<Inner>) -> ResourceOption {
 }
 
 #[cfg(test)]
-#[cfg(feature = "tokio")]
 mod tests {
+    use super::*;
+
+    #[test]
+    fn calculate_source_pos() {
+        let source = r#"
+key = Value
+
+key2 = Value 2
+"#
+        .trim();
+        let result = calculate_pos_in_source(source, 0);
+        assert_eq!(result, (1, 1));
+
+        let result = calculate_pos_in_source(source, 1);
+        assert_eq!(result, (1, 2));
+
+        let result = calculate_pos_in_source(source, 12);
+        assert_eq!(result, (2, 1));
+
+        let result = calculate_pos_in_source(source, 13);
+        assert_eq!(result, (3, 1));
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "tokio")]
+mod tests_tokio {
     use super::*;
     use crate::testing::TestFileFetcher;
 
