@@ -8,7 +8,6 @@ use crate::fluent::FluentResource;
 use std::{
     borrow::Borrow,
     cell::RefCell,
-    collections::HashMap,
     fmt,
     hash::{Hash, Hasher},
     pin::Pin,
@@ -17,6 +16,7 @@ use std::{
 };
 
 use futures::{future::Shared, Future, FutureExt};
+use rustc_hash::FxHashMap;
 use unic_langid::LanguageIdentifier;
 
 pub type RcResource = Rc<FluentResource>;
@@ -74,7 +74,7 @@ pub struct FileSource {
 struct Inner {
     fetcher: Box<dyn FileFetcher>,
     error_reporter: Option<RefCell<Box<dyn ErrorReporter>>>,
-    entries: RefCell<HashMap<String, ResourceStatus>>,
+    entries: RefCell<FxHashMap<String, ResourceStatus>>,
 }
 
 impl fmt::Display for FileSource {
@@ -111,7 +111,7 @@ impl FileSource {
             locales,
             index: None,
             shared: Rc::new(Inner {
-                entries: RefCell::new(HashMap::default()),
+                entries: RefCell::new(FxHashMap::default()),
                 fetcher: Box::new(fetcher),
                 error_reporter: None,
             }),
@@ -131,7 +131,7 @@ impl FileSource {
             locales,
             index: Some(index),
             shared: Rc::new(Inner {
-                entries: RefCell::new(HashMap::default()),
+                entries: RefCell::new(FxHashMap::default()),
                 fetcher: Box::new(fetcher),
                 error_reporter: None,
             }),

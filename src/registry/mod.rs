@@ -183,6 +183,18 @@ impl<P> L10nRegistry<P> {
         Ok(sources.iter().any(|source| source.name == name))
     }
 
+    pub fn get_source(&self, name: &str) -> Result<Option<FileSource>, L10nRegistrySetupError> {
+        let sources = self
+            .shared
+            .sources
+            .try_borrow_mut()
+            .map_err(|_| L10nRegistrySetupError::RegistryLocked)?;
+        Ok(sources
+            .iter()
+            .find(|source| source.name == name)
+            .cloned())
+    }
+
     pub fn get_available_locales(&self) -> Result<Vec<LanguageIdentifier>, L10nRegistrySetupError> {
         let sources = self
             .shared
