@@ -128,7 +128,7 @@ fn test_indexed() {
         "toolkit",
         vec![en_us.clone()],
         "toolkit/{locale}/",
-        vec!["toolkit/global/textActions.ftl"],
+        vec!["toolkit/en-US/toolkit/global/textActions.ftl"],
     );
 
     assert_eq!(fs1.has_file(&en_us, path), Some(true));

@@ -189,10 +189,7 @@ impl<P> L10nRegistry<P> {
             .sources
             .try_borrow_mut()
             .map_err(|_| L10nRegistrySetupError::RegistryLocked)?;
-        Ok(sources
-            .iter()
-            .find(|source| source.name == name)
-            .cloned())
+        Ok(sources.iter().find(|source| source.name == name).cloned())
     }
 
     pub fn get_available_locales(&self) -> Result<Vec<LanguageIdentifier>, L10nRegistrySetupError> {

@@ -270,7 +270,7 @@ impl FileSource {
         } else {
             let full_path = self.get_path(locale, path);
             if let Some(index) = &self.index {
-                return Some(index.iter().any(|p| p == path));
+                return Some(index.iter().any(|p| p == &full_path));
             }
             self.shared.has_file(&full_path)
         }
