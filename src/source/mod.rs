@@ -279,15 +279,28 @@ impl FileSource {
     pub fn locales(&self) -> &[LanguageIdentifier] {
         &self.locales
     }
+
+    pub fn get_index(&self) -> Option<&Vec<String>> {
+        self.index.as_ref()
+    }
 }
 
 impl std::fmt::Debug for FileSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("FileSource")
-            .field("name", &self.name)
-            .field("locales", &self.locales)
-            .field("pre_path", &self.pre_path)
-            .finish()
+        if let Some(index) = &self.index {
+            f.debug_struct("FileSource")
+                .field("name", &self.name)
+                .field("locales", &self.locales)
+                .field("pre_path", &self.pre_path)
+                .field("index", index)
+                .finish()
+        } else {
+            f.debug_struct("FileSource")
+                .field("name", &self.name)
+                .field("locales", &self.locales)
+                .field("pre_path", &self.pre_path)
+                .finish()
+        }
     }
 }
 
