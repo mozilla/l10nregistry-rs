@@ -68,6 +68,8 @@ pub struct FileSource {
     pub name: String,
     /// Pre-formatted path for the FileSource, e.g. "/browser/data/locale/{locale}/"
     pub pre_path: String,
+    /// Meta-source name for the FileSource, e.g. "browser", "lang-pack"
+    pub metasource: String,
     /// The locales for which data is present in the FileSource, e.g. ["en-US", "pl"]
     locales: Vec<LanguageIdentifier>,
     shared: Rc<Inner>,
@@ -89,7 +91,7 @@ impl fmt::Display for FileSource {
 
 impl PartialEq<FileSource> for FileSource {
     fn eq(&self, other: &Self) -> bool {
-        self.name == other.name
+        self.name == other.name && self.metasource == other.metasource
     }
 }
 
@@ -125,6 +127,7 @@ impl FileSource {
     ) -> Self {
         FileSource {
             name,
+            metasource: String::default(),
             pre_path,
             locales,
             index: None,
@@ -147,6 +150,7 @@ impl FileSource {
     ) -> Self {
         FileSource {
             name,
+            metasource: String::default(),
             pre_path,
             locales,
             index: Some(index),
@@ -158,6 +162,30 @@ impl FileSource {
             options,
         }
     }
+
+    pub fn new_with_metasource(
+        name: String,
+        metasource: String,
+        locales: Vec<LanguageIdentifier>,
+        pre_path: String,
+        options: FileSourceOptions,
+        fetcher: impl FileFetcher + 'static,
+    ) -> Self {
+        FileSource {
+            name,
+            metasource,
+            pre_path,
+            locales,
+            index: None,
+            shared: Rc::new(Inner {
+                entries: RefCell::new(FxHashMap::default()),
+                fetcher: Box::new(fetcher),
+                error_reporter: None,
+            }),
+            options,
+        }
+    }
+
 
     pub fn set_reporter(&mut self, reporter: impl ErrorReporter + 'static) {
         let mut shared = Rc::get_mut(&mut self.shared).unwrap();

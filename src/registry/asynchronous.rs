@@ -133,7 +133,8 @@ impl<'l, P, B> AsyncTester for GenerateBundles<P, B> {
             .iter()
             .map(|(res_idx, source_idx)| {
                 let res = &self.res_ids[*res_idx];
-                lock.source_idx(*source_idx).fetch_file(locale, res)
+                lock.source_idx(0 /*TODO*/, *source_idx)
+                    .fetch_file(locale, res)
             })
             .collect::<FuturesOrdered<_>>();
         TestResult(stream.collect())
@@ -164,6 +165,7 @@ where
                         Ok(Some(order)) => {
                             let locale = self.state.get_locale();
                             let bundle = self.reg.lock().bundle_from_order(
+                                0, /* TODO */
                                 locale.clone(),
                                 &order,
                                 &self.res_ids,
@@ -197,7 +199,10 @@ where
                     }
                 }
             } else if let Some(locale) = self.locales.next() {
-                let solver = ParallelProblemSolver::new(self.res_ids.len(), self.reg.lock().len());
+                let solver = ParallelProblemSolver::new(
+                    self.res_ids.len(),
+                    self.reg.lock().len(0 /* TODO */),
+                );
                 self.state = State::Solver { locale, solver };
             } else {
                 return None.into();
