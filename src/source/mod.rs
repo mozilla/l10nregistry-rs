@@ -64,8 +64,11 @@ impl Future for ResourceStatus {
 /// implementation and `FileSource` takes care of the rest.
 #[derive(Clone)]
 pub struct FileSource {
+    /// Name of the FileSource, e.g. "browser"
     pub name: String,
+    /// Pre-formatted path for the FileSource, e.g. "/browser/data/locale/{locale}/"
     pub pre_path: String,
+    /// The locales for which data is present in the FileSource, e.g. ["en-US", "pl"]
     locales: Vec<LanguageIdentifier>,
     shared: Rc<Inner>,
     index: Option<Vec<String>>,
