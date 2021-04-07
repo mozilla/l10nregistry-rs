@@ -69,6 +69,7 @@ pub struct FileSource {
     locales: Vec<LanguageIdentifier>,
     shared: Rc<Inner>,
     index: Option<Vec<String>>,
+    pub options: FileSourceOptions,
 }
 
 struct Inner {
@@ -97,12 +98,26 @@ impl Hash for FileSource {
     }
 }
 
+#[derive(PartialEq, Clone, Debug)]
+pub struct FileSourceOptions {
+    pub allow_override: bool,
+}
+
+impl Default for FileSourceOptions {
+    fn default() -> Self {
+        Self {
+            allow_override: false,
+        }
+    }
+}
+
 impl FileSource {
     /// Create a `FileSource` using the provided [`FileFetcher`](../trait.FileFetcher.html).
     pub fn new(
         name: String,
         locales: Vec<LanguageIdentifier>,
         pre_path: String,
+        options: FileSourceOptions,
         fetcher: impl FileFetcher + 'static,
     ) -> Self {
         FileSource {
@@ -115,6 +130,7 @@ impl FileSource {
                 fetcher: Box::new(fetcher),
                 error_reporter: None,
             }),
+            options,
         }
     }
 
@@ -122,6 +138,7 @@ impl FileSource {
         name: String,
         locales: Vec<LanguageIdentifier>,
         pre_path: String,
+        options: FileSourceOptions,
         fetcher: impl FileFetcher + 'static,
         index: Vec<String>,
     ) -> Self {
@@ -135,6 +152,7 @@ impl FileSource {
                 fetcher: Box::new(fetcher),
                 error_reporter: None,
             }),
+            options,
         }
     }
 

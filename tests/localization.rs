@@ -1,11 +1,13 @@
 use std::borrow::Cow;
 
 use fluent_fallback::{env::LocalesProvider, types::L10nKey, Localization};
-use l10nregistry::testing::{FileSource, RegistrySetup, TestEnvironment, TestFileFetcher};
+use l10nregistry::testing::{
+    FileSource, MockBundleAdapter, RegistrySetup, TestEnvironment, TestFileFetcher,
+};
 use serial_test::serial;
 use unic_langid::{langid, LanguageIdentifier};
 
-type L10nRegistry = l10nregistry::registry::L10nRegistry<TestEnvironment>;
+type L10nRegistry = l10nregistry::registry::L10nRegistry<TestEnvironment, MockBundleAdapter>;
 
 static LOCALES: &[LanguageIdentifier] = &[langid!("pl"), langid!("en-US")];
 static mut FILE_FETCHER: Option<TestFileFetcher> = None;

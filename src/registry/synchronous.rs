@@ -30,12 +30,18 @@ impl<'a, B> L10nRegistryLocked<'a, B> {
         for (&source_idx, path) in source_order.iter().zip(res_ids.iter()) {
             let source = self.source_idx(source_idx);
             if let Some(res) = source.fetch_file_sync(&locale, path, false) {
-                if let Err(err) = bundle.add_resource(res) {
-                    errors.extend(err.into_iter().map(|error| L10nRegistryError::FluentError {
-                        path: path.clone(),
-                        loc: None,
-                        error,
-                    }));
+                if source.options.allow_override {
+                    bundle.add_resource_overriding(res);
+                } else {
+                    if let Err(err) = bundle.add_resource(res) {
+                        errors.extend(err.into_iter().map(|error| {
+                            L10nRegistryError::FluentError {
+                                path: path.clone(),
+                                loc: None,
+                                error,
+                            }
+                        }));
+                    }
                 }
             } else {
                 return None;

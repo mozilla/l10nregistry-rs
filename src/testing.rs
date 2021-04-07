@@ -128,7 +128,13 @@ impl TestFileFetcher {
         locales: Vec<LanguageIdentifier>,
         path: &str,
     ) -> crate::source::FileSource {
-        crate::source::FileSource::new(name.to_string(), locales, path.to_string(), self.clone())
+        crate::source::FileSource::new(
+            name.to_string(),
+            locales,
+            path.to_string(),
+            Default::default(),
+            self.clone(),
+        )
     }
 
     pub fn get_test_file_source_with_index(
@@ -142,6 +148,7 @@ impl TestFileFetcher {
             name.to_string(),
             locales,
             path.to_string(),
+            Default::default(),
             self.clone(),
             index.into_iter().map(|s| s.to_string()).collect(),
         )
@@ -179,6 +186,35 @@ impl TestFileFetcher {
             })
             .collect();
         reg.register_sources(sources).unwrap();
+        (provider, reg)
+    }
+
+    pub fn get_registry_and_environment_with_adapter<S, B>(
+        &self,
+        setup: S,
+        bundle_adapter: B,
+    ) -> (TestEnvironment, L10nRegistry<TestEnvironment, B>)
+    where
+        S: Into<RegistrySetup>,
+        B: BundleAdapter,
+    {
+        let setup: RegistrySetup = setup.into();
+        let provider = TestEnvironment::new(setup.locales);
+
+        let mut reg = L10nRegistry::with_provider(provider.clone());
+        let sources = setup
+            .file_sources
+            .into_iter()
+            .map(|source| {
+                let mut s =
+                    self.get_test_file_source(&source.name, source.locales, &source.path_scheme);
+                s.set_reporter(provider.clone());
+                s
+            })
+            .collect();
+        reg.register_sources(sources).unwrap();
+        reg.set_adapt_bundle(bundle_adapter)
+            .expect("Failed to set bundle adapter.");
         (provider, reg)
     }
 }
