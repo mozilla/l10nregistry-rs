@@ -22,18 +22,18 @@ pub use synchronous::GenerateBundlesSync;
 pub type FluentResourceSet = Vec<Rc<FluentResource>>;
 
 #[derive(Default)]
-struct Shared<P> {
+struct Shared<P, B> {
     sources: RefCell<Vec<FileSource>>,
     provider: P,
-    adapt_bundle: Option<fn(&mut FluentBundle)>,
+    bundle_adapter: Option<B>,
 }
 
-pub struct L10nRegistryLocked<'a> {
+pub struct L10nRegistryLocked<'a, B> {
     lock: Ref<'a, Vec<FileSource>>,
-    adapt_bundle: Option<fn(&mut FluentBundle)>,
+    bundle_adapter: Option<&'a B>,
 }
 
-impl<'a> L10nRegistryLocked<'a> {
+impl<'a, B> L10nRegistryLocked<'a, B> {
     pub fn iter(&self) -> impl Iterator<Item = &FileSource> {
         self.lock.iter()
     }
@@ -65,35 +65,39 @@ impl<'a> L10nRegistryLocked<'a> {
     }
 }
 
-#[derive(Clone)]
-pub struct L10nRegistry<P> {
-    shared: Rc<Shared<P>>,
+pub trait BundleAdapter {
+    fn adapt_bundle(&self, bundle: &mut FluentBundle);
 }
 
-impl<P> L10nRegistry<P> {
+#[derive(Clone)]
+pub struct L10nRegistry<P, B> {
+    shared: Rc<Shared<P, B>>,
+}
+
+impl<P, B> L10nRegistry<P, B> {
     pub fn with_provider(provider: P) -> Self {
         Self {
             shared: Rc::new(Shared {
                 sources: Default::default(),
                 provider,
-                adapt_bundle: None,
+                bundle_adapter: None,
             }),
         }
     }
 
-    pub fn set_adapt_bundle(
-        &mut self,
-        adapt_bundle: fn(&mut FluentBundle),
-    ) -> Result<(), L10nRegistrySetupError> {
+    pub fn set_adapt_bundle(&mut self, bundle_adapter: B) -> Result<(), L10nRegistrySetupError>
+    where
+        B: BundleAdapter,
+    {
         let shared = Rc::get_mut(&mut self.shared).ok_or(L10nRegistrySetupError::RegistryLocked)?;
-        shared.adapt_bundle = Some(adapt_bundle);
+        shared.bundle_adapter = Some(bundle_adapter);
         Ok(())
     }
 
-    pub fn lock(&self) -> L10nRegistryLocked<'_> {
+    pub fn lock(&self) -> L10nRegistryLocked<'_, B> {
         L10nRegistryLocked {
             lock: self.shared.sources.borrow(),
-            adapt_bundle: self.shared.adapt_bundle,
+            bundle_adapter: self.shared.bundle_adapter.as_ref(),
         }
     }
 
@@ -208,13 +212,14 @@ impl<P> L10nRegistry<P> {
     }
 }
 
-impl<P> BundleGenerator for L10nRegistry<P>
+impl<P, B> BundleGenerator for L10nRegistry<P, B>
 where
     P: ErrorReporter + Clone,
+    B: BundleAdapter + Clone,
 {
     type Resource = Rc<FluentResource>;
-    type Iter = GenerateBundlesSync<P>;
-    type Stream = GenerateBundles<P>;
+    type Iter = GenerateBundlesSync<P, B>;
+    type Stream = GenerateBundles<P, B>;
 
     fn bundles_stream(
         &self,

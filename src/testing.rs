@@ -1,5 +1,7 @@
 use crate::env::ErrorReporter;
 use crate::errors::L10nRegistryError;
+use crate::fluent::FluentBundle;
+use crate::registry::BundleAdapter;
 use crate::registry::L10nRegistry;
 use crate::source::FileFetcher;
 use async_trait::async_trait;
@@ -19,6 +21,13 @@ pub struct FileSource {
     pub name: String,
     pub locales: Vec<LanguageIdentifier>,
     pub path_scheme: String,
+}
+
+#[derive(Clone)]
+pub struct MockBundleAdapter;
+
+impl BundleAdapter for MockBundleAdapter {
+    fn adapt_bundle(&self, _bundle: &mut FluentBundle) {}
 }
 
 impl FileSource {
@@ -138,7 +147,7 @@ impl TestFileFetcher {
         )
     }
 
-    pub fn get_registry<S>(&self, setup: S) -> L10nRegistry<TestEnvironment>
+    pub fn get_registry<S>(&self, setup: S) -> L10nRegistry<TestEnvironment, MockBundleAdapter>
     where
         S: Into<RegistrySetup>,
     {
@@ -148,7 +157,10 @@ impl TestFileFetcher {
     pub fn get_registry_and_environment<S>(
         &self,
         setup: S,
-    ) -> (TestEnvironment, L10nRegistry<TestEnvironment>)
+    ) -> (
+        TestEnvironment,
+        L10nRegistry<TestEnvironment, MockBundleAdapter>,
+    )
     where
         S: Into<RegistrySetup>,
     {

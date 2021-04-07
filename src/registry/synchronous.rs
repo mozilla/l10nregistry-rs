@@ -1,4 +1,4 @@
-use super::{L10nRegistry, L10nRegistryLocked};
+use super::{BundleAdapter, L10nRegistry, L10nRegistryLocked};
 use crate::env::ErrorReporter;
 use crate::errors::L10nRegistryError;
 use crate::fluent::{FluentBundle, FluentError};
@@ -7,7 +7,7 @@ use fluent_fallback::generator::BundleIterator;
 
 use unic_langid::LanguageIdentifier;
 
-impl<'a> L10nRegistryLocked<'a> {
+impl<'a, B> L10nRegistryLocked<'a, B> {
     pub(crate) fn bundle_from_order<P>(
         &self,
         locale: LanguageIdentifier,
@@ -17,11 +17,12 @@ impl<'a> L10nRegistryLocked<'a> {
     ) -> Option<Result<FluentBundle, (FluentBundle, Vec<FluentError>)>>
     where
         P: ErrorReporter,
+        B: BundleAdapter,
     {
         let mut bundle = FluentBundle::new(vec![locale.clone()]);
 
-        if let Some(adapt_bundle) = self.adapt_bundle {
-            adapt_bundle(&mut bundle);
+        if let Some(bundle_adapter) = self.bundle_adapter {
+            bundle_adapter.adapt_bundle(&mut bundle);
         }
 
         let mut errors = vec![];
@@ -48,15 +49,16 @@ impl<'a> L10nRegistryLocked<'a> {
     }
 }
 
-impl<P> L10nRegistry<P>
+impl<P, B> L10nRegistry<P, B>
 where
     P: Clone,
+    B: Clone,
 {
     pub fn generate_bundles_for_lang_sync(
         &self,
         langid: LanguageIdentifier,
         resource_ids: Vec<String>,
-    ) -> GenerateBundlesSync<P> {
+    ) -> GenerateBundlesSync<P, B> {
         let lang_ids = vec![langid];
 
         GenerateBundlesSync::new(self.clone(), lang_ids.into_iter(), resource_ids)
@@ -66,7 +68,7 @@ where
         &self,
         locales: std::vec::IntoIter<LanguageIdentifier>,
         resource_ids: Vec<String>,
-    ) -> GenerateBundlesSync<P> {
+    ) -> GenerateBundlesSync<P, B> {
         GenerateBundlesSync::new(self.clone(), locales, resource_ids)
     }
 }
@@ -110,16 +112,16 @@ impl State {
     }
 }
 
-pub struct GenerateBundlesSync<P> {
-    reg: L10nRegistry<P>,
+pub struct GenerateBundlesSync<P, B> {
+    reg: L10nRegistry<P, B>,
     locales: std::vec::IntoIter<LanguageIdentifier>,
     res_ids: Vec<String>,
     state: State,
 }
 
-impl<P> GenerateBundlesSync<P> {
+impl<P, B> GenerateBundlesSync<P, B> {
     fn new(
-        reg: L10nRegistry<P>,
+        reg: L10nRegistry<P, B>,
         locales: std::vec::IntoIter<LanguageIdentifier>,
         res_ids: Vec<String>,
     ) -> Self {
@@ -132,7 +134,7 @@ impl<P> GenerateBundlesSync<P> {
     }
 }
 
-impl<P> SyncTester for GenerateBundlesSync<P> {
+impl<P, B> SyncTester for GenerateBundlesSync<P, B> {
     fn test_sync(&self, res_idx: usize, source_idx: usize) -> bool {
         let locale = self.state.get_locale();
         let res = &self.res_ids[res_idx];
@@ -144,7 +146,7 @@ impl<P> SyncTester for GenerateBundlesSync<P> {
     }
 }
 
-impl<P> BundleIterator for GenerateBundlesSync<P>
+impl<P, B> BundleIterator for GenerateBundlesSync<P, B>
 where
     P: ErrorReporter,
 {
@@ -181,9 +183,10 @@ where
     }
 }
 
-impl<P> Iterator for GenerateBundlesSync<P>
+impl<P, B> Iterator for GenerateBundlesSync<P, B>
 where
     P: ErrorReporter,
+    B: BundleAdapter,
 {
     type Item = Result<FluentBundle, (FluentBundle, Vec<FluentError>)>;
 

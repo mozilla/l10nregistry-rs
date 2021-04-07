@@ -3,7 +3,7 @@ use std::{
     task::{Context, Poll},
 };
 
-use super::{L10nRegistry, L10nRegistryLocked};
+use super::{BundleAdapter, L10nRegistry, L10nRegistryLocked};
 use crate::solver::{AsyncTester, ParallelProblemSolver};
 use crate::{
     env::ErrorReporter,
@@ -20,17 +20,18 @@ use futures::{
 use std::future::Future;
 use unic_langid::LanguageIdentifier;
 
-impl<'a> L10nRegistryLocked<'a> {}
+impl<'a, B> L10nRegistryLocked<'a, B> {}
 
-impl<P> L10nRegistry<P>
+impl<P, B> L10nRegistry<P, B>
 where
     P: Clone,
+    B: Clone,
 {
     pub fn generate_bundles_for_lang(
         &self,
         langid: LanguageIdentifier,
         resource_ids: Vec<String>,
-    ) -> GenerateBundles<P> {
+    ) -> GenerateBundles<P, B> {
         let lang_ids = vec![langid];
 
         GenerateBundles::new(self.clone(), lang_ids.into_iter(), resource_ids)
@@ -40,27 +41,27 @@ where
         &self,
         locales: std::vec::IntoIter<LanguageIdentifier>,
         resource_ids: Vec<String>,
-    ) -> GenerateBundles<P> {
+    ) -> GenerateBundles<P, B> {
         GenerateBundles::new(self.clone(), locales, resource_ids)
     }
 }
 
-enum State<P> {
+enum State<P, B> {
     Empty,
     Locale(LanguageIdentifier),
     Solver {
         locale: LanguageIdentifier,
-        solver: ParallelProblemSolver<GenerateBundles<P>>,
+        solver: ParallelProblemSolver<GenerateBundles<P, B>>,
     },
 }
 
-impl<P> Default for State<P> {
+impl<P, B> Default for State<P, B> {
     fn default() -> Self {
         Self::Empty
     }
 }
 
-impl<P> State<P> {
+impl<P, B> State<P, B> {
     fn get_locale(&self) -> &LanguageIdentifier {
         match self {
             Self::Locale(locale) => locale,
@@ -69,14 +70,14 @@ impl<P> State<P> {
         }
     }
 
-    fn take_solver(&mut self) -> ParallelProblemSolver<GenerateBundles<P>> {
+    fn take_solver(&mut self) -> ParallelProblemSolver<GenerateBundles<P, B>> {
         replace_with::replace_with_or_default_and_return(self, |self_| match self_ {
             Self::Solver { locale, solver } => (solver, Self::Locale(locale)),
             _ => unreachable!(),
         })
     }
 
-    fn put_back_solver(&mut self, solver: ParallelProblemSolver<GenerateBundles<P>>) {
+    fn put_back_solver(&mut self, solver: ParallelProblemSolver<GenerateBundles<P, B>>) {
         replace_with::replace_with_or_default(self, |self_| match self_ {
             Self::Locale(locale) => Self::Solver { locale, solver },
             _ => unreachable!(),
@@ -84,16 +85,16 @@ impl<P> State<P> {
     }
 }
 
-pub struct GenerateBundles<P> {
-    reg: L10nRegistry<P>,
+pub struct GenerateBundles<P, B> {
+    reg: L10nRegistry<P, B>,
     locales: std::vec::IntoIter<LanguageIdentifier>,
     res_ids: Vec<String>,
-    state: State<P>,
+    state: State<P, B>,
 }
 
-impl<P> GenerateBundles<P> {
+impl<P, B> GenerateBundles<P, B> {
     fn new(
-        reg: L10nRegistry<P>,
+        reg: L10nRegistry<P, B>,
         locales: std::vec::IntoIter<LanguageIdentifier>,
         res_ids: Vec<String>,
     ) -> Self {
@@ -121,7 +122,7 @@ impl Future for TestResult {
     }
 }
 
-impl<'l, P> AsyncTester for GenerateBundles<P> {
+impl<'l, P, B> AsyncTester for GenerateBundles<P, B> {
     type Result = TestResult;
 
     fn test_async(&self, query: Vec<(usize, usize)>) -> Self::Result {
@@ -140,15 +141,16 @@ impl<'l, P> AsyncTester for GenerateBundles<P> {
 }
 
 #[async_trait::async_trait(?Send)]
-impl<P> BundleStream for GenerateBundles<P> {
+impl<P, B> BundleStream for GenerateBundles<P, B> {
     async fn prefetch_async(&mut self) {
         todo!();
     }
 }
 
-impl<P> Stream for GenerateBundles<P>
+impl<P, B> Stream for GenerateBundles<P, B>
 where
     P: ErrorReporter,
+    B: BundleAdapter,
 {
     type Item = Result<FluentBundle, (FluentBundle, Vec<FluentError>)>;
 
