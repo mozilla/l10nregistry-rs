@@ -272,7 +272,9 @@ impl TestEnvironment {
 }
 
 impl LocalesProvider for TestEnvironment {
-    fn locales(&self) -> std::vec::IntoIter<LanguageIdentifier> {
+    type Iter = std::vec::IntoIter<LanguageIdentifier>;
+
+    fn locales(&self) -> Self::Iter {
         self.inner.borrow().locales.clone().into_iter()
     }
 }

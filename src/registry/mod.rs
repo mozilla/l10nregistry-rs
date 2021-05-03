@@ -220,20 +220,17 @@ where
     type Resource = Rc<FluentResource>;
     type Iter = GenerateBundlesSync<P, B>;
     type Stream = GenerateBundles<P, B>;
+    type LocalesIter = std::vec::IntoIter<LanguageIdentifier>;
+
+    fn bundles_iter(&self, locales: Self::LocalesIter, resource_ids: Vec<String>) -> Self::Iter {
+        self.generate_bundles_sync(locales, resource_ids)
+    }
 
     fn bundles_stream(
         &self,
-        locales: std::vec::IntoIter<LanguageIdentifier>,
+        locales: Self::LocalesIter,
         resource_ids: Vec<String>,
     ) -> Self::Stream {
         self.generate_bundles(locales, resource_ids)
-    }
-
-    fn bundles_iter(
-        &self,
-        locales: std::vec::IntoIter<LanguageIdentifier>,
-        resource_ids: Vec<String>,
-    ) -> Self::Iter {
-        self.generate_bundles_sync(locales, resource_ids)
     }
 }

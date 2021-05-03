@@ -51,7 +51,9 @@ fn get_app_locales() -> &'static [LanguageIdentifier] {
 struct LocalesService;
 
 impl LocalesProvider for LocalesService {
-    fn locales(&self) -> std::vec::IntoIter<LanguageIdentifier> {
+    type Iter = std::vec::IntoIter<LanguageIdentifier>;
+
+    fn locales(&self) -> Self::Iter {
         get_app_locales().to_vec().into_iter()
     }
 }
@@ -89,7 +91,7 @@ fn localization_format_value_sync() {
         assert_eq!(value, query.1.map(|s| Cow::Borrowed(s)));
     }
 
-    assert_eq!(errors.len(), 1);
+    assert_eq!(errors.len(), 4);
 }
 
 #[test]
@@ -116,7 +118,7 @@ fn localization_format_values_sync() {
             assert_eq!(*value, Some(Cow::Borrowed(expected)));
         }
     }
-    assert_eq!(errors.len(), 1);
+    assert_eq!(errors.len(), 4);
 }
 
 #[tokio::test]
