@@ -31,6 +31,7 @@ fn scenarios_test() {
         let (env, reg) = fetcher.get_registry_and_environment_with_adapter(setup, adapter.clone());
 
         let loc = Localization::with_env(scenario.res_ids.clone(), true, env.clone(), reg);
+        let bundles = loc.bundles();
         let mut errors = vec![];
 
         for query in scenario.queries.iter() {
@@ -43,7 +44,7 @@ fn scenarios_test() {
             });
             if let Some(output) = &query.output {
                 if let Some(value) = &output.value {
-                    let v = loc.format_value_sync(&query.input.id, args.as_ref(), &mut errors);
+                    let v = bundles.format_value_sync(&query.input.id, args.as_ref(), &mut errors);
                     assert_eq!(v.unwrap().unwrap(), value.as_str());
                 }
             }

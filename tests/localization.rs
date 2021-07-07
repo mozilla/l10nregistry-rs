@@ -84,10 +84,11 @@ fn setup_async_test() -> Localization<L10nRegistry, LocalesService> {
 #[serial]
 fn localization_format_value_sync() {
     let loc = setup_sync_test();
+    let bundles = loc.bundles();
     let mut errors = vec![];
 
     for query in &[L10N_ID_PL_EN, L10N_ID_MISSING, L10N_ID_ONLY_EN] {
-        let value = loc.format_value_sync(query.0, None, &mut errors).unwrap();
+        let value = bundles.format_value_sync(query.0, None, &mut errors).unwrap();
         assert_eq!(value, query.1.map(|s| Cow::Borrowed(s)));
     }
 
@@ -98,6 +99,7 @@ fn localization_format_value_sync() {
 #[serial]
 fn localization_format_values_sync() {
     let loc = setup_sync_test();
+    let bundles = loc.bundles();
     let mut errors = vec![];
 
     let ids = &[L10N_ID_PL_EN, L10N_ID_MISSING, L10N_ID_ONLY_EN];
@@ -109,7 +111,7 @@ fn localization_format_values_sync() {
         })
         .collect::<Vec<_>>();
 
-    let values = loc.format_values_sync(&keys, &mut errors).unwrap();
+    let values = bundles.format_values_sync(&keys, &mut errors).unwrap();
 
     assert_eq!(values.len(), ids.len());
 
@@ -125,10 +127,11 @@ fn localization_format_values_sync() {
 #[serial]
 async fn localization_format_value_async() {
     let loc = setup_async_test();
+    let bundles = loc.bundles();
     let mut errors = vec![];
 
     for query in &[L10N_ID_PL_EN, L10N_ID_MISSING, L10N_ID_ONLY_EN] {
-        let value = loc.format_value(query.0, None, &mut errors).await;
+        let value = bundles.format_value(query.0, None, &mut errors).await;
         if let Some(expected) = query.1 {
             assert_eq!(value, Some(Cow::Borrowed(expected)));
         }
@@ -139,6 +142,7 @@ async fn localization_format_value_async() {
 #[serial]
 async fn localization_format_values_async() {
     let loc = setup_async_test();
+    let bundles = loc.bundles();
     let mut errors = vec![];
 
     let ids = &[L10N_ID_PL_EN, L10N_ID_MISSING, L10N_ID_ONLY_EN];
@@ -150,7 +154,7 @@ async fn localization_format_values_async() {
         })
         .collect::<Vec<_>>();
 
-    let values = loc.format_values(&keys, &mut errors).await;
+    let values = bundles.format_values(&keys, &mut errors).await;
 
     assert_eq!(values.len(), ids.len());
 
@@ -165,13 +169,15 @@ async fn localization_format_values_async() {
 #[serial]
 async fn localization_upgrade() {
     let mut loc = setup_sync_test();
+    let bundles = loc.bundles();
     let mut errors = vec![];
-    let value = loc
+    let value = bundles
         .format_value_sync(L10N_ID_PL_EN.0, None, &mut errors)
         .unwrap();
     assert_eq!(value, L10N_ID_PL_EN.1.map(|s| Cow::Borrowed(s)));
 
     loc.set_async();
-    let value = loc.format_value(L10N_ID_PL_EN.0, None, &mut errors).await;
+    let bundles = loc.bundles();
+    let value = bundles.format_value(L10N_ID_PL_EN.0, None, &mut errors).await;
     assert_eq!(value, L10N_ID_PL_EN.1.map(|s| Cow::Borrowed(s)));
 }

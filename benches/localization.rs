@@ -37,8 +37,10 @@ fn preferences_bench(c: &mut Criterion) {
                 let mut errors = vec![];
 
                 let loc = Localization::with_env(res_ids.clone(), true, env.clone(), reg.clone());
+                let bundles = loc.bundles();
+
                 for key in l10n_keys.iter() {
-                    loc.format_value_sync(&key.0, key.1.as_ref(), &mut errors);
+                    bundles.format_value_sync(&key.0, key.1.as_ref(), &mut errors);
                 }
             })
         });
@@ -55,7 +57,8 @@ fn preferences_bench(c: &mut Criterion) {
                 let (env, reg) = fetcher.get_registry_and_environment(&scenario);
                 let mut errors = vec![];
                 let loc = Localization::with_env(res_ids.clone(), true, env.clone(), reg.clone());
-                loc.format_messages_sync(&keys, &mut errors);
+                let bundles = loc.bundles();
+                bundles.format_messages_sync(&keys, &mut errors);
             })
         });
     }
