@@ -8,7 +8,7 @@ edition = "2018"
 [dependencies]
 async-trait = "0.1"
 fluent-bundle = "0.15"
-fluent-fallback = { git = "https://github.com/zbraniecki/fluent-rs", branch="ref_cell2" }
+fluent-fallback = "0.5"
 fluent-testing = { git = "https://github.com/projectfluent/fluent-rs", optional = true, features = ["sync", "async"] }
 futures = "0.3"
 pin-project-lite = "0.2"
