@@ -35,30 +35,31 @@ pub struct L10nRegistryLocked<'a, B> {
 
 impl<'a, B> L10nRegistryLocked<'a, B> {
     pub fn iter(&self, metasource: usize) -> impl Iterator<Item = &FileSource> {
-        self.lock[metasource].iter()
+        self.lock
+            .get(metasource)
+            .expect("Index out-of-range")
+            .iter()
     }
 
-    pub fn metasources_len(&self) -> usize {
+    pub fn number_of_metasources(&self) -> usize {
         self.lock.len()
     }
 
-    pub fn len(&self, metasource: usize) -> usize {
-        self.lock[metasource].len()
-    }
-
-    pub fn is_empty(&self, metasource: usize) -> bool {
-        self.len(metasource) == 0
+    pub fn metasource_len(&self, metasource: usize) -> usize {
+        self.lock.get(metasource).expect("Index out-of-range").len()
     }
 
     pub fn source_idx(&self, metasource: usize, index: usize) -> &FileSource {
-        let source_idx = self.len(metasource) - 1 - index;
+        let source_idx = self.metasource_len(metasource) - 1 - index;
         self.lock[metasource]
             .get(source_idx)
             .expect("Index out-of-range")
     }
 
     pub fn get_source(&self, metasource: usize, name: &str) -> Option<&FileSource> {
-        self.lock[metasource]
+        self.lock
+            .get(metasource)
+            .expect("Index out-of-range")
             .iter()
             .find(|&source| source.name == name)
     }

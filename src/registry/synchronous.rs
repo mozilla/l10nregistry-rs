@@ -176,7 +176,7 @@ where
         if let Some(locale) = self.locales.next() {
             let mut solver = SerialProblemSolver::new(
                 self.res_ids.len(),
-                self.reg.lock().len(self.current_metasource),
+                self.reg.lock().metasource_len(self.current_metasource),
             );
             self.state = State::Locale(locale.clone());
             if let Err(idx) = solver.try_next(self, true) {
@@ -243,7 +243,7 @@ where
                     self.current_metasource -= 1;
                     let solver = SerialProblemSolver::new(
                         self.res_ids.len(),
-                        self.reg.lock().len(self.current_metasource),
+                        self.reg.lock().metasource_len(self.current_metasource),
                     );
                     self.state = State::Solver {
                         locale: self.state.get_locale().clone(),
@@ -254,10 +254,10 @@ where
             }
 
             let locale = self.locales.next()?;
-            self.current_metasource = self.reg.lock().metasources_len() - 1;
+            self.current_metasource = self.reg.lock().number_of_metasources() - 1;
             let solver = SerialProblemSolver::new(
                 self.res_ids.len(),
-                self.reg.lock().len(self.current_metasource),
+                self.reg.lock().metasource_len(self.current_metasource),
             );
             self.state = State::Solver { locale, solver };
         }

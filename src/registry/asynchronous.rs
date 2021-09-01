@@ -201,7 +201,7 @@ where
             } else if let Some(locale) = self.locales.next() {
                 let solver = ParallelProblemSolver::new(
                     self.res_ids.len(),
-                    self.reg.lock().len(0 /* TODO */),
+                    self.reg.lock().metasource_len(0 /* TODO */),
                 );
                 self.state = State::Solver { locale, solver };
             } else {
