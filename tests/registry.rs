@@ -239,5 +239,56 @@ fn test_generate_bundles_with_metasources_sync() {
     let mut i = reg.generate_bundles_sync(lang_ids.into_iter(), paths);
 
     assert!(i.next().is_some());
+    assert!(i.next().is_some());
     assert!(i.next().is_none());
 }
+
+#[tokio::test]
+async fn test_generate_bundles_with_metasources() {
+    use futures::stream::StreamExt;
+
+    let en_us: LanguageIdentifier = "en-US".parse().unwrap();
+
+    let setup = RegistrySetup::new(
+        "test",
+        vec![
+            FileSource::new_with_metasource(
+                "toolkit",
+                "app",
+                vec![en_us.clone()],
+                "toolkit/{locale}/",
+            ),
+            FileSource::new_with_metasource(
+                "browser",
+                "app",
+                vec![en_us.clone()],
+                "browser/{locale}/",
+            ),
+            FileSource::new_with_metasource(
+                "toolkit",
+                "langpack",
+                vec![en_us.clone()],
+                "toolkit/{locale}/",
+            ),
+            FileSource::new_with_metasource(
+                "browser",
+                "langpack",
+                vec![en_us.clone()],
+                "browser/{locale}/",
+            ),
+        ],
+        vec![en_us.clone()],
+    );
+
+    let fetcher = TestFileFetcher::new();
+    let (_, reg) = fetcher.get_registry_and_environment(setup);
+
+    let paths = vec![FTL_RESOURCE_TOOLKIT.into(), FTL_RESOURCE_BROWSER.into()];
+    let langs = vec![en_us];
+    let mut i = reg.generate_bundles(langs.into_iter(), paths);
+
+    assert!(i.next().await.is_some());
+    assert!(i.next().await.is_some());
+    assert!(i.next().await.is_none());
+}
+

@@ -34,12 +34,10 @@ impl<'a, B> L10nRegistryLocked<'a, B> {
                 if source.options.allow_override {
                     bundle.add_resource_overriding(res);
                 } else if let Err(err) = bundle.add_resource(res) {
-                    errors.extend(err.into_iter().map(|error| {
-                        L10nRegistryError::FluentError {
-                            path: path.clone(),
-                            loc: None,
-                            error,
-                        }
+                    errors.extend(err.into_iter().map(|error| L10nRegistryError::FluentError {
+                        path: path.clone(),
+                        loc: None,
+                        error,
                     }));
                 }
             } else {
@@ -221,7 +219,20 @@ where
                             continue;
                         }
                     }
-                    Ok(None) => {}
+                    Ok(None) => {
+                        if self.current_metasource > 0 {
+                            self.current_metasource -= 1;
+                            let solver = SerialProblemSolver::new(
+                                self.res_ids.len(),
+                                self.reg.lock().metasource_len(self.current_metasource),
+                            );
+                            self.state = State::Solver {
+                                locale: self.state.get_locale().clone(),
+                                solver,
+                            };
+                            continue;
+                        }
+                    }
                     Err(idx) => {
                         self.reg.shared.provider.report_errors(vec![
                             L10nRegistryError::MissingResource {
@@ -232,25 +243,6 @@ where
                     }
                 }
                 self.state = State::Empty;
-            }
-
-            if let State::Solver {
-                locale: _,
-                solver: _,
-            } = self.state
-            {
-                if self.current_metasource > 0 {
-                    self.current_metasource -= 1;
-                    let solver = SerialProblemSolver::new(
-                        self.res_ids.len(),
-                        self.reg.lock().metasource_len(self.current_metasource),
-                    );
-                    self.state = State::Solver {
-                        locale: self.state.get_locale().clone(),
-                        solver,
-                    };
-                    continue;
-                }
             }
 
             let locale = self.locales.next()?;

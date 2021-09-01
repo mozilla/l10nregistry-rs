@@ -88,6 +88,7 @@ impl<P, B> State<P, B> {
 pub struct GenerateBundles<P, B> {
     reg: L10nRegistry<P, B>,
     locales: std::vec::IntoIter<LanguageIdentifier>,
+    current_metasource: usize,
     res_ids: Vec<String>,
     state: State<P, B>,
 }
@@ -101,6 +102,7 @@ impl<P, B> GenerateBundles<P, B> {
         Self {
             reg,
             locales,
+            current_metasource: 0,
             res_ids,
             state: State::Empty,
         }
@@ -133,7 +135,7 @@ impl<'l, P, B> AsyncTester for GenerateBundles<P, B> {
             .iter()
             .map(|(res_idx, source_idx)| {
                 let res = &self.res_ids[*res_idx];
-                lock.source_idx(0 /*TODO*/, *source_idx)
+                lock.source_idx(self.current_metasource, *source_idx)
                     .fetch_file(locale, res)
             })
             .collect::<FuturesOrdered<_>>();
@@ -165,7 +167,7 @@ where
                         Ok(Some(order)) => {
                             let locale = self.state.get_locale();
                             let bundle = self.reg.lock().bundle_from_order(
-                                0, /* TODO */
+                                self.current_metasource,
                                 locale.clone(),
                                 &order,
                                 &self.res_ids,
@@ -179,6 +181,18 @@ where
                             }
                         }
                         Ok(None) => {
+                            if self.current_metasource > 0 {
+                                self.current_metasource -= 1;
+                                let solver = ParallelProblemSolver::new(
+                                    self.res_ids.len(),
+                                    self.reg.lock().metasource_len(self.current_metasource),
+                                );
+                                self.state = State::Solver {
+                                    locale: self.state.get_locale().clone(),
+                                    solver,
+                                };
+                                continue;
+                            }
                             self.state = State::Empty;
                             continue;
                         }
@@ -199,9 +213,11 @@ where
                     }
                 }
             } else if let Some(locale) = self.locales.next() {
+                let number_of_metasources = self.reg.lock().number_of_metasources() - 1;
+                self.current_metasource = number_of_metasources;
                 let solver = ParallelProblemSolver::new(
                     self.res_ids.len(),
-                    self.reg.lock().metasource_len(0 /* TODO */),
+                    self.reg.lock().metasource_len(self.current_metasource),
                 );
                 self.state = State::Solver { locale, solver };
             } else {
