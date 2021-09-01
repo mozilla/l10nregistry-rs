@@ -46,6 +46,11 @@ name = "solver"
 harness = false
 required-features = ["tokio", "fluent-testing"]
 
+[[bench]]
+name = "registry"
+harness = false
+required-features = [] #"tokio", "fluent-testing"]
+
 [[test]]
 name = "source"
 path = "tests/source.rs"
