@@ -4,6 +4,7 @@ use criterion::Criterion;
 
 use l10nregistry::testing::{FileSource, RegistrySetup, TestFileFetcher};
 use unic_langid::LanguageIdentifier;
+use futures::stream::StreamExt;
 
 fn get_paths() -> Vec<String> {
     let paths: Vec<&'static str> = vec![
@@ -54,6 +55,15 @@ fn registry_bench(c: &mut Criterion) {
         })
     });
 
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    group.bench_function(&format!("parallel",), |b| {
+        b.iter(|| {
+            let lang_ids = vec![en_us.clone()];
+            let mut i = reg.generate_bundles(lang_ids.into_iter(), get_paths());
+            rt.block_on(async { while let Some(_) = i.next().await {} });
+        })
+    });
+
     group.finish();
 }
 
@@ -99,6 +109,15 @@ fn registry_metasource_bench(c: &mut Criterion) {
             let lang_ids = vec![en_us.clone()];
             let mut i = reg.generate_bundles_sync(lang_ids.into_iter(), get_paths());
             while let Some(_) = i.next() {}
+        })
+    });
+
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    group.bench_function(&format!("parallel",), |b| {
+        b.iter(|| {
+            let lang_ids = vec![en_us.clone()];
+            let mut i = reg.generate_bundles(lang_ids.into_iter(), get_paths());
+            rt.block_on(async { while let Some(_) = i.next().await {} });
         })
     });
 
