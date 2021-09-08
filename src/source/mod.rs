@@ -186,6 +186,30 @@ impl FileSource {
         }
     }
 
+    pub fn new_with_index_and_metasource(
+        name: String,
+        metasource: String,
+        locales: Vec<LanguageIdentifier>,
+        pre_path: String,
+        options: FileSourceOptions,
+        fetcher: impl FileFetcher + 'static,
+        index: Vec<String>,
+    ) -> Self {
+        FileSource {
+            name,
+            metasource,
+            pre_path,
+            locales,
+            index: Some(index),
+            shared: Rc::new(Inner {
+                entries: RefCell::new(FxHashMap::default()),
+                fetcher: Box::new(fetcher),
+                error_reporter: None,
+            }),
+            options,
+        }
+    }
+
     pub fn set_reporter(&mut self, reporter: impl ErrorReporter + 'static) {
         let mut shared = Rc::get_mut(&mut self.shared).unwrap();
         shared.error_reporter = Some(RefCell::new(Box::new(reporter)));
