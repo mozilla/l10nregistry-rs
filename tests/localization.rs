@@ -88,7 +88,9 @@ fn localization_format_value_sync() {
     let mut errors = vec![];
 
     for query in &[L10N_ID_PL_EN, L10N_ID_MISSING, L10N_ID_ONLY_EN] {
-        let value = bundles.format_value_sync(query.0, None, &mut errors).unwrap();
+        let value = bundles
+            .format_value_sync(query.0, None, &mut errors)
+            .unwrap();
         assert_eq!(value, query.1.map(|s| Cow::Borrowed(s)));
     }
 
@@ -178,6 +180,8 @@ async fn localization_upgrade() {
 
     loc.set_async();
     let bundles = loc.bundles();
-    let value = bundles.format_value(L10N_ID_PL_EN.0, None, &mut errors).await;
+    let value = bundles
+        .format_value(L10N_ID_PL_EN.0, None, &mut errors)
+        .await;
     assert_eq!(value, L10N_ID_PL_EN.1.map(|s| Cow::Borrowed(s)));
 }

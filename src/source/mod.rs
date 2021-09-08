@@ -186,7 +186,6 @@ impl FileSource {
         }
     }
 
-
     pub fn set_reporter(&mut self, reporter: impl ErrorReporter + 'static) {
         let mut shared = Rc::get_mut(&mut self.shared).unwrap();
         shared.error_reporter = Some(RefCell::new(Box::new(reporter)));

@@ -291,4 +291,3 @@ async fn test_generate_bundles_with_metasources() {
     assert!(i.next().await.is_some());
     assert!(i.next().await.is_none());
 }
-

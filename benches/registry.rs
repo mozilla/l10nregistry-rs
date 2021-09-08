@@ -2,9 +2,9 @@ use criterion::criterion_group;
 use criterion::criterion_main;
 use criterion::Criterion;
 
+use futures::stream::StreamExt;
 use l10nregistry::testing::{FileSource, RegistrySetup, TestFileFetcher};
 use unic_langid::LanguageIdentifier;
-use futures::stream::StreamExt;
 
 fn get_paths() -> Vec<String> {
     let paths: Vec<&'static str> = vec![
