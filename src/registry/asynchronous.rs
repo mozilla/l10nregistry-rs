@@ -213,6 +213,9 @@ where
                     }
                 }
             } else if let Some(locale) = self.locales.next() {
+                if self.reg.lock().number_of_metasources() == 0 {
+                    return None.into();
+                }
                 let number_of_metasources = self.reg.lock().number_of_metasources() - 1;
                 self.current_metasource = number_of_metasources;
                 let solver = ParallelProblemSolver::new(

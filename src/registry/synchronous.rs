@@ -246,6 +246,9 @@ where
             }
 
             let locale = self.locales.next()?;
+            if self.reg.lock().number_of_metasources() == 0 {
+                return None;
+            }
             self.current_metasource = self.reg.lock().number_of_metasources() - 1;
             let solver = SerialProblemSolver::new(
                 self.res_ids.len(),
