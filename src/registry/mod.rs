@@ -175,6 +175,9 @@ impl<P, B> L10nRegistry<P, B> {
         for metasource in sources.iter_mut() {
             metasource.retain(|source| !del_sources.contains(&source.name));
         }
+
+        sources.retain(|metasource| !metasource.is_empty());
+
         Ok(())
     }
 

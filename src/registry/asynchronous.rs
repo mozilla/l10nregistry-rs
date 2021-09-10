@@ -150,6 +150,23 @@ impl<P, B> BundleStream for GenerateBundles<P, B> {
     }
 }
 
+macro_rules! try_next_metasource {
+    ( $self:ident ) => {{
+        if $self.current_metasource > 0 {
+            $self.current_metasource -= 1;
+            let solver = ParallelProblemSolver::new(
+                $self.res_ids.len(),
+                $self.reg.lock().metasource_len($self.current_metasource),
+            );
+            $self.state = State::Solver {
+                locale: $self.state.get_locale().clone(),
+                solver,
+            };
+            continue;
+        }
+    }};
+}
+
 impl<P, B> Stream for GenerateBundles<P, B>
 where
     P: ErrorReporter,
@@ -181,22 +198,14 @@ where
                             }
                         }
                         Ok(None) => {
-                            if self.current_metasource > 0 {
-                                self.current_metasource -= 1;
-                                let solver = ParallelProblemSolver::new(
-                                    self.res_ids.len(),
-                                    self.reg.lock().metasource_len(self.current_metasource),
-                                );
-                                self.state = State::Solver {
-                                    locale: self.state.get_locale().clone(),
-                                    solver,
-                                };
-                                continue;
-                            }
+                            try_next_metasource!(self);
                             self.state = State::Empty;
                             continue;
                         }
                         Err(idx) => {
+                            try_next_metasource!(self);
+                            // Only signal an error if we run out of metasources
+                            // to try.
                             self.reg.shared.provider.report_errors(vec![
                                 L10nRegistryError::MissingResource {
                                     locale: self.state.get_locale().clone(),

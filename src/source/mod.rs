@@ -362,6 +362,7 @@ impl std::fmt::Debug for FileSource {
         if let Some(index) = &self.index {
             f.debug_struct("FileSource")
                 .field("name", &self.name)
+                .field("metasource", &self.metasource)
                 .field("locales", &self.locales)
                 .field("pre_path", &self.pre_path)
                 .field("index", index)
@@ -369,6 +370,7 @@ impl std::fmt::Debug for FileSource {
         } else {
             f.debug_struct("FileSource")
                 .field("name", &self.name)
+                .field("metasource", &self.metasource)
                 .field("locales", &self.locales)
                 .field("pre_path", &self.pre_path)
                 .finish()
