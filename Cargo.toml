@@ -7,9 +7,12 @@ edition = "2018"
 
 [dependencies]
 async-trait = "0.1"
-fluent-bundle = "0.15"
-fluent-fallback = "0.5"
-fluent-testing = { git = "https://github.com/projectfluent/fluent-rs", optional = true, features = ["sync", "async"] }
+#fluent-bundle = { git = "https://github.com/nordzilla/fluent-rs.git", rev = "94c06c10b511dd968926bb51f72656e7a071fbf1" }
+#fluent-fallback = { git = "https://github.com/nordzilla/fluent-rs.git", rev = "94c06c10b511dd968926bb51f72656e7a071fbf1" }
+#fluent-testing = { git = "https://github.com/nordzilla/fluent-rs.git", rev = "94c06c10b511dd968926bb51f72656e7a071fbf1", optional = true, features = ["sync", "async"] }
+fluent-bundle = { path = "../fluent-rs/fluent-bundle" }
+fluent-fallback = { path = "../fluent-rs/fluent-fallback" }
+fluent-testing = { path = "../fluent-rs/fluent-testing", optional = true, features = ["sync", "async"] }
 futures = "0.3"
 pin-project-lite = "0.2"
 unic-langid = "0.9"
@@ -67,6 +70,11 @@ path = "tests/localization.rs"
 required-features = ["tokio", "fluent-testing"]
 
 [[test]]
-name = "scenarios"
-path = "tests/scenarios.rs"
+name = "scenarios_sync"
+path = "tests/scenarios_sync.rs"
+required-features = ["fluent-testing"]
+
+[[test]]
+name = "scenarios_async"
+path = "tests/scenarios_async.rs"
 required-features = ["tokio", "fluent-testing"]
