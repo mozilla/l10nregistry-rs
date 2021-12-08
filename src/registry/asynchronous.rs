@@ -9,7 +9,7 @@ use crate::{
     env::ErrorReporter,
     errors::L10nRegistryError,
     fluent::{FluentBundle, FluentError},
-    source::{RcResource, ResourceOption, ResourceStatus},
+    source::{ResourceOption, ResourceStatus},
 };
 
 use fluent_fallback::{generator::BundleStream, types::ResourceId};
@@ -109,8 +109,7 @@ impl<P, B> GenerateBundles<P, B> {
     }
 }
 
-pub type ResourceSetStream =
-    Collect<FuturesOrdered<ResourceStatus>, Vec<ResourceOption<RcResource>>>;
+pub type ResourceSetStream = Collect<FuturesOrdered<ResourceStatus>, Vec<ResourceOption>>;
 pub struct TestResult(ResourceSetStream);
 impl std::marker::Unpin for TestResult {}
 

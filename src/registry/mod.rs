@@ -8,7 +8,7 @@ use std::{
 };
 
 use crate::errors::L10nRegistrySetupError;
-use crate::source::FileSource;
+use crate::source::{FileSource, ResourceId};
 
 use crate::env::ErrorReporter;
 use crate::fluent::FluentBundle;
@@ -17,7 +17,6 @@ use fluent_fallback::generator::BundleGenerator;
 use unic_langid::LanguageIdentifier;
 
 pub use asynchronous::GenerateBundles;
-pub use fluent_fallback::types::ResourceId;
 pub use synchronous::GenerateBundlesSync;
 
 pub type FluentResourceSet = Vec<Rc<FluentResource>>;
@@ -253,7 +252,7 @@ where
         locales: Self::LocalesIter,
         resource_ids: Vec<ResourceId>,
     ) -> Self::Iter {
-        let resource_ids = resource_ids.into_iter().map(ResourceId::from).collect();
+        let resource_ids = resource_ids.into_iter().collect();
         self.generate_bundles_sync(locales, resource_ids)
     }
 
@@ -262,7 +261,7 @@ where
         locales: Self::LocalesIter,
         resource_ids: Vec<ResourceId>,
     ) -> Self::Stream {
-        let resource_ids = resource_ids.into_iter().map(ResourceId::from).collect();
+        let resource_ids = resource_ids.into_iter().collect();
         self.generate_bundles(locales, resource_ids)
     }
 }

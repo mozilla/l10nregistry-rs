@@ -232,7 +232,6 @@ where
                             &self.resource_ids,
                             &self.reg.shared.provider,
                         );
-                        //println!("{} bundle({:?})", self.state.get_locale(), bundle.is_some());
                         self.state.put_back_solver(solver);
                         if bundle.is_some() {
                             return bundle;

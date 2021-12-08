@@ -1,6 +1,6 @@
 mod fetcher;
 pub use fetcher::FileFetcher;
-use fluent_fallback::types::{ResourceId, ToResourceId};
+pub use fluent_fallback::types::{ResourceId, ToResourceId};
 
 use crate::env::ErrorReporter;
 use crate::errors::L10nRegistryError;
@@ -28,16 +28,16 @@ pub type RcResource = Rc<FluentResource>;
 /// except that there are two [`None`]-like variants:
 /// [`ResourceOption::MissingOptional`] and [`ResourceOption::MissingRequired`].
 #[derive(Clone, Debug)]
-pub enum ResourceOption<T> {
+pub enum ResourceOption {
     /// An available resource.
-    Some(T),
+    Some(RcResource),
     /// A missing optional resource.
     MissingOptional,
     /// A missing required resource.
     MissingRequired,
 }
 
-impl<T> ResourceOption<T> {
+impl ResourceOption {
     /// Creates a resource option that is either [`ResourceOption::MissingRequired`]
     /// or [`ResourceOption::MissingOptional`] based on whether the given [`ResourceId`]
     /// is required or optional.
@@ -63,36 +63,18 @@ impl<T> ResourceOption<T> {
     pub fn is_required_and_missing(&self) -> bool {
         matches!(self, Self::MissingRequired)
     }
+}
 
-    /// Converts from a [`ResourceOption<T>`] to an [`Option<T>`].
-    /// Loses information about whether the resource is required or optional
-    pub fn to_option(self) -> Option<T> {
-        match self {
-            Self::Some(id) => Some(id),
+impl From<ResourceOption> for Option<RcResource> {
+    fn from(other: ResourceOption) -> Self {
+        match other {
+            ResourceOption::Some(id) => Some(id),
             _ => None,
-        }
-    }
-
-    /// Converts from `&ResourceOption<T>` to `ResourceOption<&T>`.
-    pub fn as_ref(&self) -> ResourceOption<&T> {
-        match *self {
-            Self::Some(ref id) => ResourceOption::Some(id),
-            Self::MissingOptional => ResourceOption::MissingOptional,
-            Self::MissingRequired => ResourceOption::MissingRequired,
-        }
-    }
-
-    /// Maps a `ResourceOption<T>` to `ResourceOption<U>` by applying a function to a contained value.
-    pub fn map<U, F: FnOnce(T) -> U>(self, f: F) -> ResourceOption<U> {
-        match self {
-            Self::Some(x) => ResourceOption::Some(f(x)),
-            Self::MissingOptional => ResourceOption::MissingOptional,
-            Self::MissingRequired => ResourceOption::MissingRequired,
         }
     }
 }
 
-pub type ResourceFuture = Shared<Pin<Box<dyn Future<Output = ResourceOption<RcResource>>>>>;
+pub type ResourceFuture = Shared<Pin<Box<dyn Future<Output = ResourceOption>>>>;
 
 #[derive(Debug, Clone)]
 pub enum ResourceStatus {
@@ -105,8 +87,8 @@ pub enum ResourceStatus {
     Loaded(RcResource),
 }
 
-impl From<ResourceOption<RcResource>> for ResourceStatus {
-    fn from(input: ResourceOption<RcResource>) -> Self {
+impl From<ResourceOption> for ResourceStatus {
+    fn from(input: ResourceOption) -> Self {
         match input {
             ResourceOption::Some(res) => Self::Loaded(res),
             ResourceOption::MissingOptional => Self::MissingOptional,
@@ -116,7 +98,7 @@ impl From<ResourceOption<RcResource>> for ResourceStatus {
 }
 
 impl Future for ResourceStatus {
-    type Output = ResourceOption<RcResource>;
+    type Output = ResourceOption;
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut std::task::Context<'_>) -> Poll<Self::Output> {
         use ResourceStatus::*;
@@ -270,7 +252,7 @@ impl FileSource {
         )
     }
 
-    fn fetch_sync(&self, resource_id: &ResourceId) -> ResourceOption<RcResource> {
+    fn fetch_sync(&self, resource_id: &ResourceId) -> ResourceOption {
         self.shared
             .fetcher
             .fetch_sync(resource_id)
@@ -304,7 +286,7 @@ impl FileSource {
         locale: &LanguageIdentifier,
         resource_id: &ResourceId,
         overload: bool,
-    ) -> ResourceOption<RcResource> {
+    ) -> ResourceOption {
         use ResourceStatus::*;
 
         if self.has_file(locale, resource_id) == Some(false) {
@@ -430,11 +412,7 @@ impl Inner {
         lock.entry(resource_id.value).or_insert_with(|| f()).clone()
     }
 
-    fn update_resource(
-        &self,
-        resource_id: ResourceId,
-        resource: ResourceOption<RcResource>,
-    ) -> ResourceOption<RcResource> {
+    fn update_resource(&self, resource_id: ResourceId, resource: ResourceOption) -> ResourceOption {
         let mut lock = self.entries.borrow_mut();
         let entry = lock.get_mut(&resource_id.value);
         match entry {
@@ -454,7 +432,7 @@ impl Inner {
     }
 }
 
-async fn read_resource(resource_id: ResourceId, shared: Rc<Inner>) -> ResourceOption<RcResource> {
+async fn read_resource(resource_id: ResourceId, shared: Rc<Inner>) -> ResourceOption {
     let resource = shared
         .fetcher
         .fetch(&resource_id)
