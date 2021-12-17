@@ -488,7 +488,7 @@ key2 = Value 2
 }
 
 #[cfg(test)]
-#[cfg(feature = "tokio")]
+#[cfg(all(feature = "tokio", feature = "test-fluent"))]
 mod tests_tokio {
     use super::*;
     use crate::testing::TestFileFetcher;
