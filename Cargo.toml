@@ -7,12 +7,9 @@ edition = "2018"
 
 [dependencies]
 async-trait = "0.1"
-#fluent-bundle = { git = "https://github.com/nordzilla/fluent-rs.git", rev = "94c06c10b511dd968926bb51f72656e7a071fbf1" }
-#fluent-fallback = { git = "https://github.com/nordzilla/fluent-rs.git", rev = "94c06c10b511dd968926bb51f72656e7a071fbf1" }
-#fluent-testing = { git = "https://github.com/nordzilla/fluent-rs.git", rev = "94c06c10b511dd968926bb51f72656e7a071fbf1", optional = true, features = ["sync", "async"] }
-fluent-bundle = { path = "../fluent-rs/fluent-bundle" }
-fluent-fallback = { path = "../fluent-rs/fluent-fallback" }
-fluent-testing = { path = "../fluent-rs/fluent-testing", optional = true, features = ["sync", "async"] }
+fluent-bundle = { git = "https://github.com/projectfluent/fluent-rs.git", rev = "94b1601df5c3d8aceb09cb34e99e2e3239e4958f" }
+fluent-fallback = { git = "https://github.com/projectfluent/fluent-rs.git", rev = "94b1601df5c3d8aceb09cb34e99e2e3239e4958f" }
+fluent-testing = { git = "https://github.com/projectfluent/fluent-rs.git", rev = "94b1601df5c3d8aceb09cb34e99e2e3239e4958f", optional = true, features = ["sync", "async"] }
 futures = "0.3"
 pin-project-lite = "0.2"
 unic-langid = "0.9"
