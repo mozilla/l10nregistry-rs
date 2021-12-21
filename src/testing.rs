@@ -312,7 +312,8 @@ impl ErrorReporter for TestEnvironment {
                 panic!("Errors: {:#?}", errors);
             }
             ErrorStrategy::Report => {
-                println!("Errors: {:#?}", errors);
+                #[cfg(test)] // Don't let printing affect benchmarks
+                eprintln!("Errors: {:#?}", errors);
             }
             ErrorStrategy::Nothing => {}
         }

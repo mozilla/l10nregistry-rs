@@ -9,7 +9,7 @@ edition = "2018"
 async-trait = "0.1"
 fluent-bundle = "0.15.2"
 fluent-fallback = "0.6.0"
-fluent-testing = { version = "0.0.1", features = ["sync", "async"] }
+fluent-testing = { version = "0.0.2", optional = true, features = ["sync", "async"] }
 futures = "0.3"
 pin-project-lite = "0.2"
 unic-langid = "0.9"
